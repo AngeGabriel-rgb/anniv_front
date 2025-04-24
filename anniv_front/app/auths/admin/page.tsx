@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CalendarDays, Users, Search, Plus, Edit, Trash2, MapPin, Info } from "lucide-react";
+import { getParticipants } from "@/lib/auth"; // Assurez-vous d'importer correctement votre fonction
 
 export default function AdminDashboard() {
   interface Anniversaire {
@@ -27,6 +28,53 @@ export default function AdminDashboard() {
   }
 
   const [participants, setParticipants] = useState<Participant[]>([]);
+  const [newParticipant, setNewParticipant] = useState<{ nom: string; prenom: string; email: string }>({ nom: '', prenom: '', email: '' });
+
+  // Fonction pour récupérer les anniversaires (placeholder)
+  const fetchAnniversaires = async () => {
+
+   
+  };
+
+  // Fonction pour récupérer les participants
+  const fetchParticipants = async () => {
+    try {
+      const data = await getParticipants();
+      setParticipants(data);
+    } catch (error) {
+      console.error("Erreur lors de la récupération des participants:", error);
+    }
+  };
+
+  // Fonction pour créer un nouveau participant
+  const handleCreateParticipant = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/auths/participants/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newParticipant),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Erreur lors de la création du participant.");
+      }
+
+      // Réinitialiser le formulaire
+      setNewParticipant({ nom: '', prenom: '', email: '' });
+      fetchParticipants(); // Rafraîchir la liste des participants
+    } catch (error) {
+      console.error("Erreur lors de la création du participant:", error);
+    }
+  };
+
+  // Appeler les fonctions lors du montage du composant
+  useEffect(() => {
+    fetchAnniversaires();
+    fetchParticipants();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-rose-50 to-white dark:from-gray-900 dark:to-gray-800">
@@ -130,6 +178,10 @@ export default function AdminDashboard() {
                   className="pl-10 h-12 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-gray-200 dark:border-gray-700"
                 />
               </div>
+              <Button size="lg" className="w-full sm:w-auto bg-rose-500 hover:bg-rose-600 text-white" onClick={handleCreateParticipant}>
+                <Plus className="h-5 w-5 mr-2" />
+                Ajouter un Participant
+              </Button>
             </div>
 
             <Card className="backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 border-gray-200 dark:border-gray-700">

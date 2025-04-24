@@ -1,60 +1,55 @@
-export interface RegisterFormData {
-  name: string;
-  email: string;
-  password: string;
-  guests: number;
-}
-
-export interface LoginFormData {
-  email: string;
-  password: string;
-}
-
-export interface Anniversaire {
-  id: string;
-  title: string;
-  date: string;
-  location: string;
-  maxGuests: number;
-  description: string;
-  createdAt: string;
-}
-
-export interface Participant {
-  id: string;
-  anniversaireId: string;
-  name: string;
-  email: string;
-  guests: number;
-  status: 'pending' | 'confirmed' | 'declined';
-  createdAt: string;
-}
-
+// Admin types
 export interface Admin {
-  id: string;
-  email: string;
-  name: string;
-  firstName: string;
-  lastName: string;
-}
-
-export interface ApiResponse<T> {
-  data?: T;
-  error?: string;
-  token?: string;
-  message?: string;
+  id: string
+  nom: string
+  prenom: string
+  email: string
+  role: string
 }
 
 export interface AdminRegisterData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
+  firstName: string
+  lastName: string
+  email: string
+  password: string
+  username: string
 }
 
-export interface ParticipantRegisterData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
+// Participant types
+export type Participant = {
+  id: string
+  nom: string
+  prenom: string
+  email: string
+  code_unique: string
+  est_confirme: boolean // Added the missing property
+};
+export interface RegisterFormData {
+  name: string
+  email: string
+  password: string
+  guests?: number
+}
+
+export interface LoginFormData {
+  email: string
+  password: string
+}
+
+// API response types
+export interface ApiResponse<T> {
+  success?: boolean
+  data?: T
+  token?: string
+  message?: string
+  error?: string
+}
+
+export type Anniversaire = {
+  id: string
+  date: string
+titre: string
+  description: string
+  participants: Participant[]
+
 }
