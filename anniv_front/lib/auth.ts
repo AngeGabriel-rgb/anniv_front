@@ -9,6 +9,7 @@ export async function registerAdmin(data: AdminRegisterData): Promise<ApiRespons
     email: data.email,
     password: data.password,
   }
+  
 
   const response = await fetch("http://localhost:8000/auths/admin/register", {
     method: "POST",

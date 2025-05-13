@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CalendarDays, Users, Search, Plus, Edit, Trash2, MapPin, Info } from "lucide-react";
-import { getParticipants } from "@/lib/auth"; // Assurez-vous d'importer correctement votre fonction
+import { getParticipantToken } from "@/lib/auth"; // Correction de l'import
 
 export default function AdminDashboard() {
   interface Anniversaire {
@@ -23,6 +23,7 @@ export default function AdminDashboard() {
     id: string;
     name: string;
     email: string;
+    password: string;
     guests: number;
     status: 'confirmed' | 'pending' | 'declined';
   }
@@ -39,7 +40,23 @@ export default function AdminDashboard() {
   // Fonction pour récupérer les participants
   const fetchParticipants = async () => {
     try {
-      const data = await getParticipants();
+      // Remplacez ceci par un appel API réel pour obtenir les participants
+      // Ici, on simule une récupération de participants à partir d'un token
+      const token = getParticipantToken();
+      if (!token) {
+        setParticipants([]);
+        return;
+      }
+      // Exemple d'appel API (à adapter selon votre backend)
+      const response = await fetch('http://localhost:8000/participants', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error("Erreur lors de la récupération des participants.");
+      }
+      const data = await response.json();
       setParticipants(data);
     } catch (error) {
       console.error("Erreur lors de la récupération des participants:", error);
@@ -49,7 +66,7 @@ export default function AdminDashboard() {
   // Fonction pour créer un nouveau participant
   const handleCreateParticipant = async () => {
     try {
-      const response = await fetch('http://localhost:8000/auths/participants/register', {
+      const response = await fetch('http://localhost:8000/participants', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -45,11 +45,13 @@ export interface ApiResponse<T> {
   error?: string
 }
 
-export type Anniversaire = {
+export interface Anniversaire {
   id: string
+  titre: string
+  description?: string
   date: string
-titre: string
-  description: string
-  participants: Participant[]
-
+  location?: string
+  maxGuests?: number
+  time?: string
+  isParticipating?: boolean
 }
