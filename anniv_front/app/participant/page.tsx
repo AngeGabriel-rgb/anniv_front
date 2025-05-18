@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CalendarDays, Gift, PartyPopper, Users, Check } from "lucide-react"
 import { registerParticipant, loginParticipant } from "@/lib/auth"
-import type { RegisterFormData, LoginFormData } from "./types"
+import type { RegisterFormData, LoginFormData } from "../types"
 
 export default function Home() {
   const router = useRouter()
