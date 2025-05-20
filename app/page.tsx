@@ -34,7 +34,7 @@ export default function HomePage() {
       >
         <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-purple-800 mb-4">Bienvenue à la Fête!</h1>
         <p className="text-lg sm:text-xl text-purple-600 max-w-md mx-auto">
-          Choisissez votre mode d'accès pour participer à cet événement spécial
+          Choisissez votre mode d&apos;accès pour participer à cet événement spécial
         </p>
       </motion.div>
 
@@ -50,16 +50,15 @@ export default function HomePage() {
               <Crown className="h-12 w-12 text-pink-600" />
             </div>
             <h2 className="text-2xl font-bold text-pink-700 mb-4">Administrateur</h2>
-            <p className="text-pink-600 mb-6 text-center">Gérez l'événement, les invités et les activités</p>
+            <p className="text-pink-600 mb-6 text-center">Gérez l&apos;événement, les invités et les activités</p>
             <Link href="/auths/admin/login" className="w-full">
               <Button className="w-full bg-pink-600 hover:bg-pink-700 text-white py-6 flex items-center justify-center gap-2">
-                <span>Accéder à l'interface Admin</span>
+                <span>Accéder à l&apos;interface Admin</span>
                 <Sparkles className="h-5 w-5" />
               </Button>
             </Link>
           </div>
         </motion.div>
-
         <motion.div
           initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}

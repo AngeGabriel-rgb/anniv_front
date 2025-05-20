@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CalendarDays, Users, Search, Plus, Edit, Trash2, MapPin, Info } from "lucide-react";
-import { getParticipantToken } from "@/lib/auth"; // Correction de l'import
+import { CalendarDays, Users, Search, Plus, Edit, Trash2, MapPin } from "lucide-react";
 
 export default function AdminDashboard() {
   interface Anniversaire {
@@ -18,7 +17,6 @@ export default function AdminDashboard() {
     description: string;
   }
 
-  const [anniversaires, setAnniversaires] = useState<Anniversaire[]>([]);
   interface Participant {
     id: string;
     name: string;
@@ -28,42 +26,35 @@ export default function AdminDashboard() {
     status: 'confirmed' | 'pending' | 'declined';
   }
 
+  const [anniversaires, setAnniversaires] = useState<Anniversaire[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
-  const [newParticipant, setNewParticipant] = useState<{ nom: string; prenom: string; email: string }>({ nom: '', prenom: '', email: '' });
 
-  // Fonction pour récupérer les anniversaires (placeholder)
   const fetchAnniversaires = async () => {
-
-   
+    try {
+      const response = await fetch('http://localhost:8000/anniversaires');
+      if (!response.ok) {
+        throw new Error("Erreur lors de la récupération des anniversaires");
+      }
+      const data = await response.json();
+      setAnniversaires(data);
+    } catch (error) {
+      console.error("Erreur:", error);
+    }
   };
 
-  // Fonction pour récupérer les participants
   const fetchParticipants = async () => {
     try {
-      // Remplacez ceci par un appel API réel pour obtenir les participants
-      // Ici, on simule une récupération de participants à partir d'un token
-      const token = getParticipantToken();
-      if (!token) {
-        setParticipants([]);
-        return;
-      }
-      // Exemple d'appel API (à adapter selon votre backend)
-      const response = await fetch('http://localhost:8000/participants', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const response = await fetch('http://localhost:8000/participants');
       if (!response.ok) {
-        throw new Error("Erreur lors de la récupération des participants.");
+        throw new Error("Erreur lors de la récupération des participants");
       }
       const data = await response.json();
       setParticipants(data);
     } catch (error) {
-      console.error("Erreur lors de la récupération des participants:", error);
+      console.error("Erreur:", error);
     }
   };
 
-  // Fonction pour créer un nouveau participant
   const handleCreateParticipant = async () => {
     try {
       const response = await fetch('http://localhost:8000/participants', {
@@ -71,23 +62,22 @@ export default function AdminDashboard() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(newParticipant),
+        body: JSON.stringify({
+          name: "Nouveau Participant",
+          email: "nouveau@example.com",
+          guests: 1
+        }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Erreur lors de la création du participant.");
+        throw new Error("Erreur lors de la création");
       }
-
-      // Réinitialiser le formulaire
-      setNewParticipant({ nom: '', prenom: '', email: '' });
-      fetchParticipants(); // Rafraîchir la liste des participants
+      fetchParticipants();
     } catch (error) {
-      console.error("Erreur lors de la création du participant:", error);
+      console.error("Erreur:", error);
     }
   };
 
-  // Appeler les fonctions lors du montage du composant
   useEffect(() => {
     fetchAnniversaires();
     fetchParticipants();
@@ -175,10 +165,6 @@ export default function AdminDashboard() {
                         <Users className="h-4 w-4 text-rose-500" />
                         <span>{anniversaire.maxGuests} invités maximum</span>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                        <Info className="h-4 w-4 text-rose-500" />
-                        <span>{anniversaire.description}</span>
-                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -195,7 +181,11 @@ export default function AdminDashboard() {
                   className="pl-10 h-12 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-gray-200 dark:border-gray-700"
                 />
               </div>
-              <Button size="lg" className="w-full sm:w-auto bg-rose-500 hover:bg-rose-600 text-white" onClick={handleCreateParticipant}>
+              <Button 
+                size="lg" 
+                className="w-full sm:w-auto bg-rose-500 hover:bg-rose-600 text-white" 
+                onClick={handleCreateParticipant}
+              >
                 <Plus className="h-5 w-5 mr-2" />
                 Ajouter un Participant
               </Button>
@@ -225,7 +215,8 @@ export default function AdminDashboard() {
                               ${participant.status === 'confirmed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
                               participant.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
                               'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'}`}>
-                              {participant.status.charAt(0).toUpperCase() + participant.status.slice(1)}
+                              {participant.status === 'confirmed' ? 'Confirmé' : 
+                               participant.status === 'pending' ? 'En attente' : 'Décliné'}
                             </span>
                           </td>
                           <td className="p-4">

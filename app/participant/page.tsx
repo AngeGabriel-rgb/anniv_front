@@ -92,23 +92,23 @@ export default function Home() {
 
       {/* Content */}
       <div className="relative z-10">
-        {/* Special Offer Popup */}
-        <Dialog open={showSpecialOffer} onOpenChange={setShowSpecialOffer}>
-          <DialogContent className="mx-4 max-w-[calc(100%-2rem)] sm:mx-0 sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-xl sm:text-2xl">
-                <Gift className="h-5 w-5 sm:h-6 sm:w-6 text-rose-500" />
-                Rejoignez-moi pour célébrer !
-              </DialogTitle>
-            </DialogHeader>
-            <div className="p-4 sm:p-6 text-center text-white bg-black/10 backdrop-blur-lg rounded-lg shadow-lg">
-              <p className="text-base sm:text-lg text-white">
-                Une année de plus de rires, d'aventures et de souvenirs !
-              </p>
-              <p className="mt-2 text-xs sm:text-sm text-white">Confirmez votre présence avant le 20 avril 2024</p>
-            </div>
-          </DialogContent>
-        </Dialog>
+            {/* Special Offer Popup */}
+      <Dialog open={showSpecialOffer} onOpenChange={setShowSpecialOffer}>
+        <DialogContent className="mx-4 max-w-[calc(100%-2rem)] sm:mx-0 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl sm:text-2xl">
+              <Gift className="h-5 w-5 sm:h-6 sm:w-6 text-rose-500" />
+              Rejoignez-moi pour célébrer !
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-4 sm:p-6 text-center text-white bg-black/10 backdrop-blur-lg rounded-lg shadow-lg">
+            <p className="text-base sm:text-lg text-white">
+              Une année de plus de rires, d&apos;aventures et de souvenirs !
+            </p>
+            <p className="mt-2 text-xs sm:text-sm text-white">Confirmez votre présence avant le 20 avril 2024</p>
+          </div>
+        </DialogContent>
+      </Dialog>
 
         {/* Confirmation Popup */}
         {/* <Dialog open={showConfirmation} onOpenChange={setShowConfirmation}>

@@ -15,15 +15,6 @@ export interface AdminRegisterData {
   username: string
 }
 
-// Participant types
-export type Participant = {
-  id: string
-  nom: string
-  prenom: string
-  email: string
-  code_unique: string
-  est_confirme: boolean // Added the missing property
-};
 export interface RegisterFormData {
   name: string
   email: string
@@ -45,13 +36,33 @@ export interface ApiResponse<T> {
   error?: string
 }
 
+export interface Participant {
+  id: string
+  nom: string
+  prenom: string
+  email: string
+  code_unique?: string
+  est_confirme: boolean
+  guests?: number
+  status?: 'confirmed' | 'pending' | 'declined'
+}
+
 export interface Anniversaire {
   id: string
   titre: string
-  description?: string
   date: string
+  time ?: string
   location?: string
+  description?: string
   maxGuests?: number
-  time?: string
+  participantId?: string
+  adminId?: string
+  participants?: Participant[]
   isParticipating?: boolean
+}
+
+export interface ApiError {
+  message: string
+  statusCode?: number
+  errors?: Record<string, string>
 }
