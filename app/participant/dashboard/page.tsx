@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -44,7 +43,7 @@ export default function ParticipantDashboard() {
         return false
       }
 
-      // Get user info from localStorage (in a real app, this would come from your auth system)
+      // Get user info from localStorage
       try {
         const participantData = localStorage.getItem("participant")
         if (participantData) {
@@ -112,7 +111,6 @@ export default function ParticipantDashboard() {
 
   // Function to toggle participation
   const toggleParticipation = (anniversaireId: string, currentStatus: boolean) => {
-    // In a real app, this would call an API to update participation status
     setAnniversaires(
       anniversaires.map((anniv) =>
         anniv.id === anniversaireId ? { ...anniv, isParticipating: !currentStatus } : anniv,
