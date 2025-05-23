@@ -16,7 +16,19 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { CalendarDays, Users, Search, Plus, Edit, Trash2, Loader2, RefreshCw, Calendar, UserPlus, Info } from "lucide-react"
+import {
+  CalendarDays,
+  Users,
+  Search,
+  Plus,
+  Edit,
+  Trash2,
+  Loader2,
+  RefreshCw,
+  Calendar,
+  UserPlus,
+  Info,
+} from "lucide-react"
 import { isAuthenticated, logout } from "@/lib/auth"
 import {
   fetchParticipants,
@@ -418,7 +430,7 @@ export default function AdminDashboard() {
                         Création...
                       </>
                     ) : (
-                      "Créer l'anniversaire"
+                      "Créer l{' '}anniversaire"
                     )}
                   </Button>
                 </DialogFooter>
