@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -61,7 +60,7 @@ export default function LoginPage() {
             </Button>
             <div className="text-center text-sm">
               <Link href="/auths/admin/register" className="text-rose-500 hover:underline">
-                Pas encore de compte ? S'inscrire
+                Pas encore de compte ? S&apos;inscrire
               </Link>
             </div>
           </form>

@@ -89,26 +89,6 @@ export default function ParticipantDashboard() {
       anniversaire.location?.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
-  // Function to format date
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString("fr-FR", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    })
-  }
-
-  // Function to format time
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleTimeString("fr-FR", {
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-  }
-
   // Function to toggle participation
   const toggleParticipation = (anniversaireId: string, currentStatus: boolean) => {
     setAnniversaires(

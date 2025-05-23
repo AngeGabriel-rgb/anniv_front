@@ -6,12 +6,26 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { CalendarDays, Users, Search, Plus, Edit, Trash2, MapPin, Info, Loader2, RefreshCw, Calendar, User, Mail, UserPlus } from 'lucide-react'
+import { CalendarDays, Users, Search, Plus, Edit, Trash2, Loader2, RefreshCw, Calendar, UserPlus, Info } from "lucide-react"
 import { isAuthenticated, logout } from "@/lib/auth"
-import { fetchParticipants, fetchAnniversaires, createParticipant, createAnniversaire, deleteParticipant, deleteAnniversaire } from "@/lib/api"
+import {
+  fetchParticipants,
+  fetchAnniversaires,
+  createParticipant,
+  createAnniversaire,
+  deleteParticipant,
+  deleteAnniversaire,
+} from "@/lib/api"
 import type { Participant, Anniversaire } from "@/app/types"
 
 export default function AdminDashboard() {
@@ -27,13 +41,13 @@ export default function AdminDashboard() {
   const [newParticipant, setNewParticipant] = useState({
     nom: "",
     prenom: "",
-    email: ""
+    email: "",
   })
   const [newAnniversaire, setNewAnniversaire] = useState({
     date: "",
     description: "",
     participantId: "",
-    adminId: "1" // Default admin ID, should be replaced with actual logged-in admin ID
+    adminId: "1", // Default admin ID, should be replaced with actual logged-in admin ID
   })
   const [isCreatingParticipant, setIsCreatingParticipant] = useState(false)
   const [isCreatingAnniversaire, setIsCreatingAnniversaire] = useState(false)
@@ -93,9 +107,9 @@ export default function AdminDashboard() {
       await getParticipants() // Refresh the list
       setNewParticipant({ nom: "", prenom: "", email: "" })
       setParticipantDialogOpen(false)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Erreur lors de la création du participant:", err)
-      setError(err.message || "Impossible de créer le participant. Veuillez réessayer.")
+      setError(err instanceof Error ? err.message : "Impossible de créer le participant. Veuillez réessayer.")
     } finally {
       setIsCreatingParticipant(false)
     }
@@ -117,12 +131,12 @@ export default function AdminDashboard() {
         date: "",
         description: "",
         participantId: "",
-        adminId: "1"
+        adminId: "1",
       })
       setAnniversaireDialogOpen(false)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Erreur lors de la création de l'anniversaire:", err)
-      setError(err.message || "Impossible de créer l'anniversaire. Veuillez réessayer.")
+      setError(err instanceof Error ? err.message : "Impossible de créer l'anniversaire. Veuillez réessayer.")
     } finally {
       setIsCreatingAnniversaire(false)
     }
@@ -134,9 +148,9 @@ export default function AdminDashboard() {
       try {
         await deleteParticipant(id)
         await getParticipants() // Refresh the list
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Erreur lors de la suppression du participant:", err)
-        setError(err.message || "Impossible de supprimer le participant. Veuillez réessayer.")
+        setError(err instanceof Error ? err.message : "Impossible de supprimer le participant. Veuillez réessayer.")
       }
     }
   }
@@ -147,9 +161,9 @@ export default function AdminDashboard() {
       try {
         await deleteAnniversaire(id)
         await getAnniversaires() // Refresh the list
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Erreur lors de la suppression de l'anniversaire:", err)
-        setError(err.message || "Impossible de supprimer l'anniversaire. Veuillez réessayer.")
+        setError(err instanceof Error ? err.message : "Impossible de supprimer l'anniversaire. Veuillez réessayer.")
       }
     }
   }
@@ -158,14 +172,14 @@ export default function AdminDashboard() {
   const filteredAnniversaires = anniversaires.filter(
     (anniversaire) =>
       anniversaire.titre?.toLowerCase().includes(searchTermAnniversaire.toLowerCase()) ||
-      anniversaire.description?.toLowerCase().includes(searchTermAnniversaire.toLowerCase())
+      anniversaire.description?.toLowerCase().includes(searchTermAnniversaire.toLowerCase()),
   )
 
   // Filter participants based on search term
   const filteredParticipants = participants.filter(
     (participant) =>
       `${participant.prenom} ${participant.nom}`.toLowerCase().includes(searchTermParticipant.toLowerCase()) ||
-      participant.email.toLowerCase().includes(searchTermParticipant.toLowerCase())
+      participant.email.toLowerCase().includes(searchTermParticipant.toLowerCase()),
   )
 
   // Load data on component mount
@@ -190,15 +204,13 @@ export default function AdminDashboard() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
-                Dashboard Administrateur
-              </h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Dashboard Administrateur</h1>
               <p className="mt-1 text-sm sm:text-base text-gray-600 dark:text-gray-400">
                 Gérez les anniversaires et les participants
               </p>
             </div>
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               className="flex items-center gap-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
               onClick={logout}
             >
@@ -209,22 +221,18 @@ export default function AdminDashboard() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        {error && (
-          <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-md">
-            {error}
-          </div>
-        )}
+        {error && <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-md">{error}</div>}
 
         <Tabs defaultValue="anniversaires" className="space-y-8">
           <TabsList className="inline-flex h-12 items-center justify-center rounded-lg bg-white/90 dark:bg-gray-800/90 p-1 text-gray-500 dark:text-gray-400 backdrop-blur-sm">
-            <TabsTrigger 
-              value="anniversaires" 
+            <TabsTrigger
+              value="anniversaires"
               className="inline-flex items-center px-6 py-2.5 rounded-md transition-colors duration-200 hover:text-gray-900 dark:hover:text-white data-[state=active]:bg-rose-500 data-[state=active]:text-white"
             >
               <CalendarDays className="h-5 w-5 mr-2" />
               Anniversaires
             </TabsTrigger>
-            <TabsTrigger 
+            <TabsTrigger
               value="participants"
               className="inline-flex items-center px-6 py-2.5 rounded-md transition-colors duration-200 hover:text-gray-900 dark:hover:text-white data-[state=active]:bg-rose-500 data-[state=active]:text-white"
             >
@@ -285,7 +293,7 @@ export default function AdminDashboard() {
                       ? "Aucun anniversaire ne correspond à votre recherche."
                       : "Aucun anniversaire n'a été trouvé."}
                   </p>
-                  <Button 
+                  <Button
                     className="mt-4 bg-rose-500 hover:bg-rose-600"
                     onClick={() => setAnniversaireDialogOpen(true)}
                   >
@@ -309,9 +317,9 @@ export default function AdminDashboard() {
                         <Button variant="ghost" size="icon" className="h-8 w-8">
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="h-8 w-8 text-rose-500 hover:text-rose-600"
                           onClick={() => handleDeleteAnniversaire(anniversaire.id)}
                         >
@@ -356,9 +364,7 @@ export default function AdminDashboard() {
               <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
                   <DialogTitle>Créer un nouvel anniversaire</DialogTitle>
-                  <DialogDescription>
-                    Remplissez les informations pour créer un nouvel anniversaire.
-                  </DialogDescription>
+                  <DialogDescription>Remplissez les informations pour créer un nouvel anniversaire.</DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="grid gap-2">
@@ -397,11 +403,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setAnniversaireDialogOpen(false)}
-                  >
+                  <Button type="button" variant="outline" onClick={() => setAnniversaireDialogOpen(false)}>
                     Annuler
                   </Button>
                   <Button
@@ -465,7 +467,7 @@ export default function AdminDashboard() {
             {isLoadingParticipants ? (
               <div className="flex justify-center items-center h-64">
                 <Loader2 className="h-8 w-8 animate-spin text-rose-500" />
-                <span className="ml-2 text-gray-600 dark:text-gray-400">Chargement des participants...</span>
+                <span className="ml-2 text-gray-600 dark:text-gray-400">{"Chargement des participants..."}</span>
               </div>
             ) : (
               <Card className="backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 border-gray-200 dark:border-gray-700">
@@ -478,7 +480,7 @@ export default function AdminDashboard() {
                           ? "Aucun participant ne correspond à votre recherche."
                           : "Aucun participant n'a été trouvé."}
                       </p>
-                      <Button 
+                      <Button
                         className="mt-4 bg-rose-500 hover:bg-rose-600"
                         onClick={() => setParticipantDialogOpen(true)}
                       >
@@ -526,9 +528,9 @@ export default function AdminDashboard() {
                                   <Button variant="ghost" size="icon" className="h-8 w-8">
                                     <Edit className="h-4 w-4" />
                                   </Button>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
                                     className="h-8 w-8 text-rose-500 hover:text-rose-600"
                                     onClick={() => handleDeleteParticipant(participant.id)}
                                   >
@@ -585,11 +587,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setParticipantDialogOpen(false)}
-                  >
+                  <Button type="button" variant="outline" onClick={() => setParticipantDialogOpen(false)}>
                     Annuler
                   </Button>
                   <Button

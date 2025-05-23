@@ -27,7 +27,7 @@ export async function fetchParticipants(): Promise<Participant[]> {
 
     const data = await response.json()
     return data
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur lors de la récupération des participants:", error)
     throw error
   }
@@ -57,7 +57,7 @@ export async function fetchAnniversaires(): Promise<Anniversaire[]> {
 
     const data = await response.json()
     return data
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur lors de la récupération des anniversaires:", error)
     throw error
   }
@@ -140,7 +140,7 @@ export async function createParticipant(participantData: {
 
     const data = await response.json()
     return data
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur lors de la création du participant:", error)
     throw error
   }
@@ -176,7 +176,7 @@ export async function createAnniversaire(anniversaireData: {
 
     const data = await response.json()
     return data
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur lors de la création de l'anniversaire:", error)
     throw error
   }
@@ -203,7 +203,7 @@ export async function deleteParticipant(id: string): Promise<void> {
       const errorData = await response.json()
       throw new Error(errorData.message || "Erreur lors de la suppression du participant")
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur lors de la suppression du participant:", error)
     throw error
   }
@@ -230,7 +230,7 @@ export async function deleteAnniversaire(id: string): Promise<void> {
       const errorData = await response.json()
       throw new Error(errorData.message || "Erreur lors de la suppression de l'anniversaire")
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur lors de la suppression de l'anniversaire:", error)
     throw error
   }
@@ -264,7 +264,7 @@ export async function addParticipantToAnniversaire(
 
     const data = await response.json()
     return data
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur lors de l'ajout du participant à l'anniversaire:", error)
     throw error
   }
@@ -297,7 +297,7 @@ export async function removeParticipantFromAnniversaire(
 
     const data = await response.json()
     return data
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur lors de la suppression du participant de l'anniversaire:", error)
     throw error
   }
