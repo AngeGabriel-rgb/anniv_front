@@ -31,7 +31,7 @@ export default function AdminDashboard() {
 
   const fetchAnniversaires = async () => {
     try {
-      const response = await fetch('http://localhost:8000/anniversaires');
+      const response = await fetch('https://anniversaire-w9lu.onrender.com/anniversaires');
       if (!response.ok) {
         throw new Error("Erreur lors de la récupération des anniversaires");
       }
@@ -44,7 +44,7 @@ export default function AdminDashboard() {
 
   const fetchParticipants = async () => {
     try {
-      const response = await fetch('http://localhost:8000/participants');
+      const response = await fetch('https://anniversaire-w9lu.onrender.com/participants');
       if (!response.ok) {
         throw new Error("Erreur lors de la récupération des participants");
       }
@@ -57,7 +57,7 @@ export default function AdminDashboard() {
 
   const handleCreateParticipant = async () => {
     try {
-      const response = await fetch('http://localhost:8000/participants', {
+      const response = await fetch('https://anniversaire-w9lu.onrender.com/participants', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
