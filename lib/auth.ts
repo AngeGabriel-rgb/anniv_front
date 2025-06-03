@@ -1,8 +1,9 @@
 import type { Admin, AdminRegisterData, ApiResponse, RegisterFormData, LoginFormData } from "@/app/types"
 
+const URL_API = "https://anniversaire-w9lu.onrender.com";
+
 // Inscription d'un administrateur
 export async function registerAdmin(data: AdminRegisterData): Promise<ApiResponse<Admin>> {
-  // Transform the data to match the backend API expectations
   const apiData = {
     nom: data.lastName,
     prenom: data.firstName,
@@ -10,7 +11,7 @@ export async function registerAdmin(data: AdminRegisterData): Promise<ApiRespons
     password: data.password,
   }
 
-  const response = await fetch("https://anniversaire-w9lu.onrender.com/auths/admin/register", {
+  const response = await fetch(`${URL_API}/auths/admin/register`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -33,7 +34,7 @@ export async function registerAdmin(data: AdminRegisterData): Promise<ApiRespons
 
 // Connexion d'un administrateur
 export async function loginAdmin(email: string, password: string): Promise<ApiResponse<Admin>> {
-  const response = await fetch("https://anniversaire-w9lu.onrender.com/auths/admin/login", {
+  const response = await fetch(`${URL_API}/auths/admin/login`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -56,7 +57,6 @@ export async function loginAdmin(email: string, password: string): Promise<ApiRe
 
 // Inscription d'un participant
 export async function registerParticipant(data: RegisterFormData): Promise<ApiResponse<void>> {
-  // Transform the data to match the backend API expectations
   const apiData = {
     nom: data.name.split(" ")[0] || data.name,
     prenom: data.name.split(" ")[1] || "",
@@ -64,7 +64,7 @@ export async function registerParticipant(data: RegisterFormData): Promise<ApiRe
     password: data.password,
   }
 
-  const response = await fetch("https://anniversaire-w9lu.onrender.com/auths/participants/register", {
+  const response = await fetch(`${URL_API}/auths/participants/register`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -83,7 +83,7 @@ export async function registerParticipant(data: RegisterFormData): Promise<ApiRe
 
 // Connexion d'un participant
 export async function loginParticipant(data: LoginFormData): Promise<ApiResponse<void>> {
-  const response = await fetch("https://anniversaire-w9lu.onrender.com/auths/participants/login", {
+  const response = await fetch(`${URL_API}/auths/participants/login`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
