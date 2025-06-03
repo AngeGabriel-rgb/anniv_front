@@ -9,9 +9,8 @@ export async function registerAdmin(data: AdminRegisterData): Promise<ApiRespons
     email: data.email,
     password: data.password,
   }
-  
 
-  const response = await fetch("http://localhost:8000/auths/admin/register", {
+  const response = await fetch("https://anniversaire-w9lu.onrender.com/auths/admin/register", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -34,7 +33,7 @@ export async function registerAdmin(data: AdminRegisterData): Promise<ApiRespons
 
 // Connexion d'un administrateur
 export async function loginAdmin(email: string, password: string): Promise<ApiResponse<Admin>> {
-  const response = await fetch("http://localhost:8000/auths/admin/login", {
+  const response = await fetch("https://anniversaire-w9lu.onrender.com/auths/admin/login", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -65,7 +64,7 @@ export async function registerParticipant(data: RegisterFormData): Promise<ApiRe
     password: data.password,
   }
 
-  const response = await fetch("http://localhost:8000/auths/participants/register", {
+  const response = await fetch("https://anniversaire-w9lu.onrender.com/auths/participants/register", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -84,7 +83,7 @@ export async function registerParticipant(data: RegisterFormData): Promise<ApiRe
 
 // Connexion d'un participant
 export async function loginParticipant(data: LoginFormData): Promise<ApiResponse<void>> {
-  const response = await fetch("http://localhost:8000/auths/participants/login", {
+  const response = await fetch("https://anniversaire-w9lu.onrender.com/auths/participants/login", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

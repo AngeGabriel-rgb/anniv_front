@@ -105,7 +105,7 @@ export default function Home() {
               <p className="text-base sm:text-lg text-white">
                 Une année de plus de rires, d{"'"}aventures et de souvenirs !
               </p>
-              <p className="mt-2 text-xs sm:text-sm text-white">Confirmez votre présence avant le 20 avril 2024</p>
+              <p className="mt-2 text-xs sm:text-sm text-white">Confirmez votre présence </p>
             </div>
           </DialogContent>
         </Dialog>
@@ -203,11 +203,6 @@ export default function Home() {
             >
               Plus d{"'"}informations
             </Button>
-          </div>
-          <div className="mt-4 text-sm text-gray-300">
-            <Link href="/auths/admin/login" className="hover:underline">
-              Accès administrateur
-            </Link>
           </div>
         </section>
 
