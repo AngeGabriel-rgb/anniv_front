@@ -1,6 +1,6 @@
 import type { Admin, AdminRegisterData, ApiResponse, RegisterFormData, LoginFormData } from "@/app/types"
 
-const URL_API = "https://anniversaire-w9lu.onrender.com";
+const URL_API = "https://anniversaire-qqem.onrender.com";
 
 // Inscription d'un administrateur
 export async function registerAdmin(data: AdminRegisterData): Promise<ApiResponse<Admin>> {

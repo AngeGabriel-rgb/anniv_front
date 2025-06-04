@@ -31,7 +31,7 @@ export default function AdminDashboard() {
 
   const fetchAnniversaires = async () => {
     try {
-      const response = await fetch('https://anniversaire-w9lu.onrender.com/anniversaires');
+      const response = await fetch('https://anniversaire-qqem.onrender.com/anniversaires');
       if (!response.ok) {
         throw new Error("Erreur lors de la récupération des anniversaires");
       }

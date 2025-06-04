@@ -1,7 +1,7 @@
 import type { Participant, Anniversaire } from "@/app/types"
 import { getAuthToken } from "@/lib/auth"
 
-const API_URL = "https://anniversaire-w9lu.onrender.com"
+const API_URL = "https://anniversaire-qqem.onrender.com"
 
 // Function to fetch participants
 export async function fetchParticipants(): Promise<Participant[]> {
