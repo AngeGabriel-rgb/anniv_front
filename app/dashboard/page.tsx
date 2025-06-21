@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
   DialogContent,
@@ -28,6 +29,11 @@ import {
   Calendar,
   UserPlus,
   Info,
+  LogOut,
+  Crown,
+  PartyPopper,
+  TrendingUp,
+  Activity,
 } from "lucide-react"
 import { isAuthenticated, logout } from "@/lib/auth"
 import {
@@ -37,6 +43,8 @@ import {
   createAnniversaire,
   deleteParticipant,
   deleteAnniversaire,
+  updateParticipant,
+  updateAnniversaire,
 } from "@/lib/api"
 import type { Participant, Anniversaire } from "@/app/types"
 
@@ -58,13 +66,17 @@ export default function AdminDashboard() {
   const [newAnniversaire, setNewAnniversaire] = useState({
     date: "",
     description: "",
-    participantId: "",
-    adminId: "1", // Default admin ID, should be replaced with actual logged-in admin ID
+    participantIds: [] as string[], // Changé de participantId à participantIds
+    adminId: "1",
   })
   const [isCreatingParticipant, setIsCreatingParticipant] = useState(false)
   const [isCreatingAnniversaire, setIsCreatingAnniversaire] = useState(false)
   const [participantDialogOpen, setParticipantDialogOpen] = useState(false)
   const [anniversaireDialogOpen, setAnniversaireDialogOpen] = useState(false)
+  const [selectedParticipants, setSelectedParticipants] = useState<string[]>([])
+  const [editingAnniversaire, setEditingAnniversaire] = useState<Anniversaire | null>(null)
+  const [editAnniversaireDialogOpen, setEditAnniversaireDialogOpen] = useState(false)
+  const [isUpdatingAnniversaire, setIsUpdatingAnniversaire] = useState(false)
 
   // Check authentication
   useEffect(() => {
@@ -116,7 +128,7 @@ export default function AdminDashboard() {
     setError(null)
     try {
       await createParticipant(newParticipant)
-      await getParticipants() // Refresh the list
+      await getParticipants()
       setNewParticipant({ nom: "", prenom: "", email: "" })
       setParticipantDialogOpen(false)
     } catch (err: unknown) {
@@ -129,20 +141,25 @@ export default function AdminDashboard() {
 
   // Handle creating a new anniversaire
   const handleCreateAnniversaire = async () => {
-    if (!newAnniversaire.date || !newAnniversaire.participantId) {
-      setError("Veuillez remplir tous les champs obligatoires.")
+    if (!newAnniversaire.date || newAnniversaire.participantIds.length === 0) {
+      setError("Veuillez remplir tous les champs obligatoires et sélectionner au moins un participant.")
       return
     }
 
     setIsCreatingAnniversaire(true)
     setError(null)
     try {
-      await createAnniversaire(newAnniversaire)
-      await getAnniversaires() // Refresh the list
+      await createAnniversaire({
+        date: newAnniversaire.date,
+        description: newAnniversaire.description,
+        participantId: newAnniversaire.participantIds[0], // Utilise le premier participant sélectionné
+        adminId: newAnniversaire.adminId,
+      })
+      await getAnniversaires()
       setNewAnniversaire({
         date: "",
         description: "",
-        participantId: "",
+        participantIds: [],
         adminId: "1",
       })
       setAnniversaireDialogOpen(false)
@@ -154,12 +171,47 @@ export default function AdminDashboard() {
     }
   }
 
+  // Handle editing an anniversaire
+  const handleEditAnniversaire = (anniversaire: Anniversaire) => {
+    setEditingAnniversaire({
+      ...anniversaire,
+      participantIds: anniversaire.participants?.map((p) => p.id) || [],
+    })
+    setEditAnniversaireDialogOpen(true)
+  }
+
+  // Handle updating an anniversaire
+  const handleUpdateAnniversaire = async () => {
+    if (!editingAnniversaire || !editingAnniversaire.date || editingAnniversaire.participantIds.length === 0) {
+      setError("Veuillez remplir tous les champs obligatoires et sélectionner au moins un participant.")
+      return
+    }
+
+    setIsUpdatingAnniversaire(true)
+    setError(null)
+    try {
+      await updateAnniversaire(editingAnniversaire.id, {
+        date: editingAnniversaire.date,
+        description: editingAnniversaire.description,
+        participantIds: editingAnniversaire.participantIds,
+      })
+      await getAnniversaires()
+      setEditingAnniversaire(null)
+      setEditAnniversaireDialogOpen(false)
+    } catch (err: unknown) {
+      console.error("Erreur lors de la modification de l'anniversaire:", err)
+      setError(err instanceof Error ? err.message : "Impossible de modifier l'anniversaire. Veuillez réessayer.")
+    } finally {
+      setIsUpdatingAnniversaire(false)
+    }
+  }
+
   // Handle deleting a participant
   const handleDeleteParticipant = async (id: string) => {
     if (confirm("Êtes-vous sûr de vouloir supprimer ce participant ?")) {
       try {
         await deleteParticipant(id)
-        await getParticipants() // Refresh the list
+        await getParticipants()
       } catch (err: unknown) {
         console.error("Erreur lors de la suppression du participant:", err)
         setError(err instanceof Error ? err.message : "Impossible de supprimer le participant. Veuillez réessayer.")
@@ -172,11 +224,21 @@ export default function AdminDashboard() {
     if (confirm("Êtes-vous sûr de vouloir supprimer cet anniversaire ?")) {
       try {
         await deleteAnniversaire(id)
-        await getAnniversaires() // Refresh the list
+        await getAnniversaires()
       } catch (err: unknown) {
         console.error("Erreur lors de la suppression de l'anniversaire:", err)
         setError(err instanceof Error ? err.message : "Impossible de supprimer l'anniversaire. Veuillez réessayer.")
       }
+    }
+  }
+
+  const handleToggleParticipantStatus = async (participantId: string, currentStatus: boolean) => {
+    try {
+      await updateParticipant(participantId, !currentStatus)
+      await getParticipants() // Refresh the list
+    } catch (err: unknown) {
+      console.error("Erreur lors de la modification du statut:", err)
+      setError(err instanceof Error ? err.message : "Impossible de modifier le statut. Veuillez réessayer.")
     }
   }
 
@@ -204,28 +266,36 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-rose-500"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-rose-500 mx-auto mb-4"></div>
+          <p className="text-white">Chargement...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-rose-50 to-white dark:from-gray-900 dark:to-gray-800">
-      <header className="sticky top-0 z-10 backdrop-blur-md bg-white/70 dark:bg-gray-900/70 border-b border-gray-200 dark:border-gray-700">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      {/* Header */}
+      <header className="sticky top-0 z-10 backdrop-blur-md bg-black/20 border-b border-white/10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Dashboard Administrateur</h1>
-              <p className="mt-1 text-sm sm:text-base text-gray-600 dark:text-gray-400">
-                Gérez les anniversaires et les participants
-              </p>
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-r from-rose-500 to-pink-500 rounded-lg flex items-center justify-center">
+                <Crown className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-white">Dashboard Administrateur</h1>
+                <p className="mt-1 text-sm sm:text-base text-gray-300">Gérez les anniversaires et les participants</p>
+              </div>
             </div>
             <Button
               variant="ghost"
-              className="flex items-center gap-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+              className="flex items-center gap-2 text-gray-300 hover:text-white hover:bg-white/10 border border-white/20"
               onClick={logout}
             >
+              <LogOut className="h-4 w-4" />
               Déconnexion
             </Button>
           </div>
@@ -233,20 +303,83 @@ export default function AdminDashboard() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        {error && <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-md">{error}</div>}
+        {error && (
+          <div className="mb-6 p-4 bg-red-500/20 border border-red-500/30 text-red-300 rounded-lg backdrop-blur-sm">
+            {error}
+          </div>
+        )}
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <Card className="backdrop-blur-sm bg-white/5 border-white/10">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-400 text-sm">Total Anniversaires</p>
+                  <p className="text-2xl font-bold text-white">{anniversaires.length}</p>
+                </div>
+                <div className="w-12 h-12 bg-gradient-to-r from-rose-500/20 to-pink-500/20 rounded-lg flex items-center justify-center">
+                  <CalendarDays className="w-6 h-6 text-rose-400" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="backdrop-blur-sm bg-white/5 border-white/10">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-400 text-sm">Total Participants</p>
+                  <p className="text-2xl font-bold text-white">{participants.length}</p>
+                </div>
+                <div className="w-12 h-12 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-lg flex items-center justify-center">
+                  <Users className="w-6 h-6 text-blue-400" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="backdrop-blur-sm bg-white/5 border-white/10">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-400 text-sm">Confirmés</p>
+                  <p className="text-2xl font-bold text-white">{participants.filter((p) => p.est_confirme).length}</p>
+                </div>
+                <div className="w-12 h-12 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="w-6 h-6 text-green-400" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="backdrop-blur-sm bg-white/5 border-white/10">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-400 text-sm">En Attente</p>
+                  <p className="text-2xl font-bold text-white">{participants.filter((p) => !p.est_confirme).length}</p>
+                </div>
+                <div className="w-12 h-12 bg-gradient-to-r from-orange-500/20 to-amber-500/20 rounded-lg flex items-center justify-center">
+                  <Activity className="w-6 h-6 text-orange-400" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         <Tabs defaultValue="anniversaires" className="space-y-8">
-          <TabsList className="inline-flex h-12 items-center justify-center rounded-lg bg-white/90 dark:bg-gray-800/90 p-1 text-gray-500 dark:text-gray-400 backdrop-blur-sm">
+          <TabsList className="inline-flex h-12 items-center justify-center rounded-lg bg-white/10 p-1 backdrop-blur-sm border border-white/10">
             <TabsTrigger
               value="anniversaires"
-              className="inline-flex items-center px-6 py-2.5 rounded-md transition-colors duration-200 hover:text-gray-900 dark:hover:text-white data-[state=active]:bg-rose-500 data-[state=active]:text-white"
+              className="inline-flex items-center px-6 py-2.5 rounded-md transition-all duration-200 text-gray-300 hover:text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-rose-500 data-[state=active]:to-pink-500 data-[state=active]:text-white"
             >
               <CalendarDays className="h-5 w-5 mr-2" />
               Anniversaires
             </TabsTrigger>
             <TabsTrigger
               value="participants"
-              className="inline-flex items-center px-6 py-2.5 rounded-md transition-colors duration-200 hover:text-gray-900 dark:hover:text-white data-[state=active]:bg-rose-500 data-[state=active]:text-white"
+              className="inline-flex items-center px-6 py-2.5 rounded-md transition-all duration-200 text-gray-300 hover:text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-rose-500 data-[state=active]:to-pink-500 data-[state=active]:text-white"
             >
               <Users className="h-5 w-5 mr-2" />
               Participants
@@ -260,7 +393,7 @@ export default function AdminDashboard() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <Input
                   placeholder="Rechercher un anniversaire..."
-                  className="pl-10 h-12 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-gray-200 dark:border-gray-700"
+                  className="pl-10 h-12 bg-white/10 backdrop-blur-sm border-white/20 text-white placeholder:text-gray-400 focus:border-rose-500/50"
                   value={searchTermAnniversaire}
                   onChange={(e) => setSearchTermAnniversaire(e.target.value)}
                 />
@@ -268,7 +401,7 @@ export default function AdminDashboard() {
               <div className="flex gap-2 w-full sm:w-auto">
                 <Button
                   size="lg"
-                  className="flex-1 sm:flex-none bg-rose-500 hover:bg-rose-600 text-white"
+                  className="flex-1 sm:flex-none bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white"
                   onClick={() => setAnniversaireDialogOpen(true)}
                 >
                   <Plus className="h-5 w-5 mr-2" />
@@ -277,7 +410,7 @@ export default function AdminDashboard() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="flex-1 sm:flex-none"
+                  className="flex-1 sm:flex-none bg-transparent border-white/20 text-white hover:bg-white/10"
                   onClick={getAnniversaires}
                   disabled={isLoadingAnniversaires}
                 >
@@ -293,20 +426,22 @@ export default function AdminDashboard() {
 
             {isLoadingAnniversaires ? (
               <div className="flex justify-center items-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-rose-500" />
-                <span className="ml-2 text-gray-600 dark:text-gray-400">Chargement des anniversaires...</span>
+                <div className="text-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-rose-500 mx-auto mb-4" />
+                  <span className="text-gray-300">Chargement des anniversaires...</span>
+                </div>
               </div>
             ) : filteredAnniversaires.length === 0 ? (
-              <Card className="backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 border-gray-200 dark:border-gray-700">
+              <Card className="backdrop-blur-sm bg-white/5 border-white/10">
                 <CardContent className="flex flex-col items-center justify-center h-64">
                   <CalendarDays className="h-12 w-12 text-gray-400 mb-4" />
-                  <p className="text-gray-600 dark:text-gray-400 text-center">
+                  <p className="text-gray-300 text-center mb-4">
                     {searchTermAnniversaire
                       ? "Aucun anniversaire ne correspond à votre recherche."
                       : "Aucun anniversaire n'a été trouvé."}
                   </p>
                   <Button
-                    className="mt-4 bg-rose-500 hover:bg-rose-600"
+                    className="bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600"
                     onClick={() => setAnniversaireDialogOpen(true)}
                   >
                     <Plus className="h-4 w-4 mr-2" />
@@ -319,20 +454,26 @@ export default function AdminDashboard() {
                 {filteredAnniversaires.map((anniversaire) => (
                   <Card
                     key={anniversaire.id}
-                    className="backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow duration-200"
+                    className="backdrop-blur-sm bg-white/5 border-white/10 hover:bg-white/10 transition-all duration-300 group"
                   >
                     <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-                      <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">
+                      <CardTitle className="text-xl font-bold text-white flex items-center gap-2">
+                        <PartyPopper className="w-5 h-5 text-rose-400" />
                         {anniversaire.titre || "Anniversaire"}
                       </CardTitle>
                       <div className="flex gap-2">
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-gray-400 hover:text-white hover:bg-white/10"
+                          onClick={() => handleEditAnniversaire(anniversaire)}
+                        >
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-rose-500 hover:text-rose-600"
+                          className="h-8 w-8 text-rose-400 hover:text-rose-300 hover:bg-rose-500/20"
                           onClick={() => handleDeleteAnniversaire(anniversaire.id)}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -340,9 +481,9 @@ export default function AdminDashboard() {
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                          <Calendar className="h-4 w-4 text-rose-500" />
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-sm text-gray-300">
+                          <Calendar className="h-4 w-4 text-rose-400" />
                           <span>
                             {new Date(anniversaire.date).toLocaleDateString("fr-FR", {
                               weekday: "long",
@@ -353,15 +494,17 @@ export default function AdminDashboard() {
                           </span>
                         </div>
                         {anniversaire.participants && anniversaire.participants.length > 0 && (
-                          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                            <Users className="h-4 w-4 text-rose-500" />
+                          <div className="flex items-center gap-2 text-sm text-gray-300">
+                            <Users className="h-4 w-4 text-blue-400" />
                             <span>{anniversaire.participants.length} participant(s)</span>
                           </div>
                         )}
                         {anniversaire.description && (
-                          <div className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
-                            <Info className="h-4 w-4 text-rose-500 mt-0.5" />
-                            <span>{anniversaire.description}</span>
+                          <div className="bg-white/5 p-3 rounded-lg border border-white/10">
+                            <div className="flex items-start gap-2 text-sm text-gray-300">
+                              <Info className="h-4 w-4 text-violet-400 mt-0.5 flex-shrink-0" />
+                              <span>{anniversaire.description}</span>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -373,41 +516,71 @@ export default function AdminDashboard() {
 
             {/* Create Anniversaire Dialog */}
             <Dialog open={anniversaireDialogOpen} onOpenChange={setAnniversaireDialogOpen}>
-              <DialogContent className="sm:max-w-[500px]">
+              <DialogContent className="sm:max-w-[500px] bg-gradient-to-br from-slate-900 to-purple-900 border-white/20 text-white">
                 <DialogHeader>
-                  <DialogTitle>Créer un nouvel anniversaire</DialogTitle>
-                  <DialogDescription>Remplissez les informations pour créer un nouvel anniversaire.</DialogDescription>
+                  <DialogTitle className="text-xl text-white">Créer un nouvel anniversaire</DialogTitle>
+                  <DialogDescription className="text-gray-300">
+                    Remplissez les informations pour créer un nouvel anniversaire.
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="date">Date de l'anniversaire</Label>
+                    <Label htmlFor="date" className="text-gray-200">
+                      Date de l'anniversaire
+                    </Label>
                     <Input
                       id="date"
                       type="date"
+                      className="bg-white/10 border-white/20 text-white"
                       value={newAnniversaire.date}
                       onChange={(e) => setNewAnniversaire({ ...newAnniversaire, date: e.target.value })}
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="participantId">Participant</Label>
-                    <select
-                      id="participantId"
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      value={newAnniversaire.participantId}
-                      onChange={(e) => setNewAnniversaire({ ...newAnniversaire, participantId: e.target.value })}
-                    >
-                      <option value="">Sélectionner un participant</option>
+                    <Label htmlFor="participants" className="text-gray-200">
+                      Participants
+                    </Label>
+                    <div className="max-h-40 overflow-y-auto border border-white/20 rounded-md bg-white/10 p-2">
                       {participants.map((participant) => (
-                        <option key={participant.id} value={participant.id}>
-                          {participant.prenom} {participant.nom}
-                        </option>
+                        <label
+                          key={participant.id}
+                          className="flex items-center space-x-2 p-2 hover:bg-white/5 rounded cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            className="rounded border-white/20 bg-white/10 text-rose-500 focus:ring-rose-500"
+                            checked={newAnniversaire.participantIds.includes(participant.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setNewAnniversaire({
+                                  ...newAnniversaire,
+                                  participantIds: [...newAnniversaire.participantIds, participant.id],
+                                })
+                              } else {
+                                setNewAnniversaire({
+                                  ...newAnniversaire,
+                                  participantIds: newAnniversaire.participantIds.filter((id) => id !== participant.id),
+                                })
+                              }
+                            }}
+                          />
+                          <span className="text-white text-sm">
+                            {participant.prenom} {participant.nom}
+                          </span>
+                        </label>
                       ))}
-                    </select>
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      {newAnniversaire.participantIds.length} participant(s) sélectionné(s)
+                    </p>
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="description">Description (optionnel)</Label>
+                    <Label htmlFor="description" className="text-gray-200">
+                      Description (optionnel)
+                    </Label>
                     <Textarea
                       id="description"
+                      className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
                       value={newAnniversaire.description}
                       onChange={(e) => setNewAnniversaire({ ...newAnniversaire, description: e.target.value })}
                       placeholder="Description de l'anniversaire..."
@@ -415,12 +588,17 @@ export default function AdminDashboard() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setAnniversaireDialogOpen(false)}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="bg-transparent border-white/20 text-white hover:bg-white/10"
+                    onClick={() => setAnniversaireDialogOpen(false)}
+                  >
                     Annuler
                   </Button>
                   <Button
                     type="button"
-                    className="bg-rose-500 hover:bg-rose-600"
+                    className="bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600"
                     onClick={handleCreateAnniversaire}
                     disabled={isCreatingAnniversaire}
                   >
@@ -430,7 +608,124 @@ export default function AdminDashboard() {
                         Création...
                       </>
                     ) : (
-                      "Créer l{' '}anniversaire"
+                      "Créer l'anniversaire"
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Edit Anniversaire Dialog */}
+            <Dialog open={editAnniversaireDialogOpen} onOpenChange={setEditAnniversaireDialogOpen}>
+              <DialogContent className="sm:max-w-[500px] bg-gradient-to-br from-slate-900 to-purple-900 border-white/20 text-white">
+                <DialogHeader>
+                  <DialogTitle className="text-xl text-white">Modifier l'anniversaire</DialogTitle>
+                  <DialogDescription className="text-gray-300">
+                    Modifiez les informations de l'anniversaire.
+                  </DialogDescription>
+                </DialogHeader>
+                {editingAnniversaire && (
+                  <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-date" className="text-gray-200">
+                        Date de l'anniversaire
+                      </Label>
+                      <Input
+                        id="edit-date"
+                        type="date"
+                        className="bg-white/10 border-white/20 text-white"
+                        value={editingAnniversaire.date.split("T")[0]}
+                        onChange={(e) =>
+                          setEditingAnniversaire({
+                            ...editingAnniversaire,
+                            date: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-participants" className="text-gray-200">
+                        Participants
+                      </Label>
+                      <div className="max-h-40 overflow-y-auto border border-white/20 rounded-md bg-white/10 p-2">
+                        {participants.map((participant) => (
+                          <label
+                            key={participant.id}
+                            className="flex items-center space-x-2 p-2 hover:bg-white/5 rounded cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              className="rounded border-white/20 bg-white/10 text-rose-500 focus:ring-rose-500"
+                              checked={editingAnniversaire.participantIds?.includes(participant.id) || false}
+                              onChange={(e) => {
+                                const currentIds = editingAnniversaire.participantIds || []
+                                if (e.target.checked) {
+                                  setEditingAnniversaire({
+                                    ...editingAnniversaire,
+                                    participantIds: [...currentIds, participant.id],
+                                  })
+                                } else {
+                                  setEditingAnniversaire({
+                                    ...editingAnniversaire,
+                                    participantIds: currentIds.filter((id: string) => id !== participant.id),
+                                  })
+                                }
+                              }}
+                            />
+                            <span className="text-white text-sm">
+                              {participant.prenom} {participant.nom}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                      <p className="text-xs text-gray-400">
+                        {editingAnniversaire.participantIds?.length || 0} participant(s) sélectionné(s)
+                      </p>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-description" className="text-gray-200">
+                        Description (optionnel)
+                      </Label>
+                      <Textarea
+                        id="edit-description"
+                        className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+                        value={editingAnniversaire.description || ""}
+                        onChange={(e) =>
+                          setEditingAnniversaire({
+                            ...editingAnniversaire,
+                            description: e.target.value,
+                          })
+                        }
+                        placeholder="Description de l'anniversaire..."
+                      />
+                    </div>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="bg-transparent border-white/20 text-white hover:bg-white/10"
+                    onClick={() => {
+                      setEditAnniversaireDialogOpen(false)
+                      setEditingAnniversaire(null)
+                    }}
+                  >
+                    Annuler
+                  </Button>
+                  <Button
+                    type="button"
+                    className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600"
+                    onClick={handleUpdateAnniversaire}
+                    disabled={isUpdatingAnniversaire}
+                  >
+                    {isUpdatingAnniversaire ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Modification...
+                      </>
+                    ) : (
+                      "Modifier l'anniversaire"
                     )}
                   </Button>
                 </DialogFooter>
@@ -445,7 +740,7 @@ export default function AdminDashboard() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <Input
                   placeholder="Rechercher un participant..."
-                  className="pl-10 h-12 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-gray-200 dark:border-gray-700"
+                  className="pl-10 h-12 bg-white/10 backdrop-blur-sm border-white/20 text-white placeholder:text-gray-400 focus:border-rose-500/50"
                   value={searchTermParticipant}
                   onChange={(e) => setSearchTermParticipant(e.target.value)}
                 />
@@ -453,7 +748,7 @@ export default function AdminDashboard() {
               <div className="flex gap-2 w-full sm:w-auto">
                 <Button
                   size="lg"
-                  className="flex-1 sm:flex-none bg-rose-500 hover:bg-rose-600 text-white"
+                  className="flex-1 sm:flex-none bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white"
                   onClick={() => setParticipantDialogOpen(true)}
                 >
                   <UserPlus className="h-5 w-5 mr-2" />
@@ -462,7 +757,7 @@ export default function AdminDashboard() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="flex-1 sm:flex-none"
+                  className="flex-1 sm:flex-none bg-transparent border-white/20 text-white hover:bg-white/10"
                   onClick={getParticipants}
                   disabled={isLoadingParticipants}
                 >
@@ -478,22 +773,24 @@ export default function AdminDashboard() {
 
             {isLoadingParticipants ? (
               <div className="flex justify-center items-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-rose-500" />
-                <span className="ml-2 text-gray-600 dark:text-gray-400">{"Chargement des participants..."}</span>
+                <div className="text-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-rose-500 mx-auto mb-4" />
+                  <span className="text-gray-300">Chargement des participants...</span>
+                </div>
               </div>
             ) : (
-              <Card className="backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 border-gray-200 dark:border-gray-700">
+              <Card className="backdrop-blur-sm bg-white/5 border-white/10">
                 <CardContent className="p-0">
                   {filteredParticipants.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-64">
                       <Users className="h-12 w-12 text-gray-400 mb-4" />
-                      <p className="text-gray-600 dark:text-gray-400 text-center">
+                      <p className="text-gray-300 text-center mb-4">
                         {searchTermParticipant
                           ? "Aucun participant ne correspond à votre recherche."
                           : "Aucun participant n'a été trouvé."}
                       </p>
                       <Button
-                        className="mt-4 bg-rose-500 hover:bg-rose-600"
+                        className="bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600"
                         onClick={() => setParticipantDialogOpen(true)}
                       >
                         <UserPlus className="h-4 w-4 mr-2" />
@@ -504,46 +801,63 @@ export default function AdminDashboard() {
                     <div className="overflow-x-auto">
                       <table className="w-full">
                         <thead>
-                          <tr className="border-b border-gray-200 dark:border-gray-700">
-                            <th className="text-left p-4 font-medium text-gray-600 dark:text-gray-400">Nom</th>
-                            <th className="text-left p-4 font-medium text-gray-600 dark:text-gray-400">Email</th>
-                            <th className="text-left p-4 font-medium text-gray-600 dark:text-gray-400">Code</th>
-                            <th className="text-left p-4 font-medium text-gray-600 dark:text-gray-400">Statut</th>
-                            <th className="text-left p-4 font-medium text-gray-600 dark:text-gray-400">Actions</th>
+                          <tr className="border-b border-white/10">
+                            <th className="text-left p-4 font-medium text-gray-300">Nom</th>
+                            <th className="text-left p-4 font-medium text-gray-300">Email</th>
+                            <th className="text-left p-4 font-medium text-gray-300">Code</th>
+                            <th className="text-left p-4 font-medium text-gray-300">Statut</th>
+                            <th className="text-left p-4 font-medium text-gray-300">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
                           {filteredParticipants.map((participant) => (
                             <tr
                               key={participant.id}
-                              className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-200"
+                              className="border-b border-white/10 hover:bg-white/5 transition-colors duration-200"
                             >
-                              <td className="p-4 text-gray-900 dark:text-white">
+                              <td className="p-4 text-white">
                                 {participant.prenom} {participant.nom}
                               </td>
-                              <td className="p-4 text-gray-600 dark:text-gray-400">{participant.email}</td>
-                              <td className="p-4 text-gray-600 dark:text-gray-400">{participant.code_unique}</td>
+                              <td className="p-4 text-gray-300">{participant.email}</td>
+                              <td className="p-4 text-gray-300">{participant.code_unique}</td>
                               <td className="p-4">
-                                <span
-                                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
-                                    ${
-                                      participant.est_confirme
-                                        ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                                        : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
-                                    }`}
+                                <Badge
+                                  className={`${
+                                    participant.est_confirme
+                                      ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0"
+                                      : "bg-gradient-to-r from-orange-500 to-amber-500 text-white border-0"
+                                  }`}
                                 >
                                   {participant.est_confirme ? "Confirmé" : "En attente"}
-                                </span>
+                                </Badge>
                               </td>
                               <td className="p-4">
                                 <div className="flex gap-2">
-                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className={`h-8 px-3 text-xs ${
+                                      participant.est_confirme
+                                        ? "text-orange-400 hover:text-orange-300 hover:bg-orange-500/20"
+                                        : "text-green-400 hover:text-green-300 hover:bg-green-500/20"
+                                    }`}
+                                    onClick={() =>
+                                      handleToggleParticipantStatus(participant.id, participant.est_confirme)
+                                    }
+                                  >
+                                    {participant.est_confirme ? "Désactiver" : "Confirmer"}
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-gray-400 hover:text-white hover:bg-white/10"
+                                  >
                                     <Edit className="h-4 w-4" />
                                   </Button>
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-8 w-8 text-rose-500 hover:text-rose-600"
+                                    className="h-8 w-8 text-rose-400 hover:text-rose-300 hover:bg-rose-500/20"
                                     onClick={() => handleDeleteParticipant(participant.id)}
                                   >
                                     <Trash2 className="h-4 w-4" />
@@ -562,49 +876,63 @@ export default function AdminDashboard() {
 
             {/* Create Participant Dialog */}
             <Dialog open={participantDialogOpen} onOpenChange={setParticipantDialogOpen}>
-              <DialogContent className="sm:max-w-[500px]">
+              <DialogContent className="sm:max-w-[500px] bg-gradient-to-br from-slate-900 to-purple-900 border-white/20 text-white">
                 <DialogHeader>
-                  <DialogTitle>Ajouter un participant</DialogTitle>
-                  <DialogDescription>
+                  <DialogTitle className="text-xl text-white">Ajouter un participant</DialogTitle>
+                  <DialogDescription className="text-gray-300">
                     Remplissez les informations pour ajouter un nouveau participant.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
-                      <Label htmlFor="prenom">Prénom</Label>
+                      <Label htmlFor="prenom" className="text-gray-200">
+                        Prénom
+                      </Label>
                       <Input
                         id="prenom"
+                        className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
                         value={newParticipant.prenom}
                         onChange={(e) => setNewParticipant({ ...newParticipant, prenom: e.target.value })}
                       />
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="nom">Nom</Label>
+                      <Label htmlFor="nom" className="text-gray-200">
+                        Nom
+                      </Label>
                       <Input
                         id="nom"
+                        className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
                         value={newParticipant.nom}
                         onChange={(e) => setNewParticipant({ ...newParticipant, nom: e.target.value })}
                       />
                     </div>
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email" className="text-gray-200">
+                      Email
+                    </Label>
                     <Input
                       id="email"
                       type="email"
+                      className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
                       value={newParticipant.email}
                       onChange={(e) => setNewParticipant({ ...newParticipant, email: e.target.value })}
                     />
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setParticipantDialogOpen(false)}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="bg-transparent border-white/20 text-white hover:bg-white/10"
+                    onClick={() => setParticipantDialogOpen(false)}
+                  >
                     Annuler
                   </Button>
                   <Button
                     type="button"
-                    className="bg-rose-500 hover:bg-rose-600"
+                    className="bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600"
                     onClick={handleCreateParticipant}
                     disabled={isCreatingParticipant}
                   >

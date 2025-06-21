@@ -69,44 +69,7 @@ export async function fetchAnniversairesForParticipant(): Promise<Anniversaire[]
   // For now, we'll return mock data
   return new Promise((resolve) => {
     setTimeout(() => {
-      resolve([
-        {
-          id: "1",
-          titre: "Anniversaire de Marie",
-          date: "2024-05-15T19:00:00",
-          location: "Restaurant Le Doré, Paris",
-          maxGuests: 30,
-          description: "Venez célébrer les 30 ans de Marie dans une ambiance festive et conviviale !",
-          isParticipating: true,
-        },
-        {
-          id: "2",
-          titre: "Anniversaire de Thomas",
-          date: "2024-06-22T20:00:00",
-          location: "Salle des fêtes, Lyon",
-          maxGuests: 50,
-          description: "Thomas fête ses 40 ans ! Buffet, musique et surprises au programme.",
-          isParticipating: false,
-        },
-        {
-          id: "3",
-          titre: "Anniversaire de Sophie",
-          date: "2024-04-10T18:30:00",
-          location: "Jardin Botanique, Bordeaux",
-          maxGuests: 25,
-          description: "Un anniversaire en plein air pour célébrer le printemps et les 35 ans de Sophie.",
-          isParticipating: false,
-        },
-        {
-          id: "4",
-          titre: "Anniversaire de Lucas",
-          date: "2023-12-05T19:00:00",
-          location: "Chalet de montagne, Chamonix",
-          maxGuests: 15,
-          description: "Un week-end à la montagne pour fêter l'anniversaire de Lucas.",
-          isParticipating: true,
-        },
-      ])
+      resolve([])
     }, 800)
   })
 }
@@ -299,6 +262,66 @@ export async function removeParticipantFromAnniversaire(
     return data
   } catch (error: unknown) {
     console.error("Erreur lors de la suppression du participant de l'anniversaire:", error)
+    throw error
+  }
+}
+
+//modifie le status du participant dans l'anniversaire
+
+export async function updateParticipant(participantId: string, isConfirmed: boolean) {
+  try {
+    const response = await fetch(`${API_URL}/participants/${participantId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
+      },
+      body: JSON.stringify({ est_confirme: isConfirmed }),
+    })
+
+    if (!response.ok) {
+      throw new Error("Erreur lors de la modification du statut")
+    }
+
+    return response.json()
+  } catch (error) {
+    console.error("Erreur API:", error)
+    throw error
+  }
+}
+
+// Modifier un anniversaire
+export async function updateAnniversaire(
+  anniversaireId: string,
+  anniversaire: {
+    titre?: string
+    date: string
+    description?: string
+    participantIds: string[]
+  },
+) {
+  try {
+    const response = await fetch(`${API_URL}/anniversaires/${anniversaireId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        titre: anniversaire.titre,
+        date: anniversaire.date,
+        description: anniversaire.description,
+        participantIds: anniversaire.participantIds,
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || "Erreur lors de la modification de l'anniversaire")
+    }
+
+    return response.json()
+  } catch (error) {
+    console.error("Erreur API:", error)
     throw error
   }
 }

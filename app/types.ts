@@ -48,6 +48,7 @@ export interface Participant {
 }
 
 export interface Anniversaire {
+  participantIds: any
   id: string
   titre: string
   date: string
