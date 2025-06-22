@@ -43,7 +43,7 @@ export default function ParticipantDashboard() {
   useEffect(() => {
     const checkAuth = () => {
       if (!isAuthenticated()) {
-        router.push("/")
+        router.push("/participant/dashboard")
         return false
       }
 

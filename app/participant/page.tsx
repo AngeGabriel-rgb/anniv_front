@@ -82,7 +82,7 @@ export default function Home() {
               <div className="w-8 h-8 bg-gradient-to-r from-rose-500 to-pink-500 rounded-lg flex items-center justify-center">
                 <PartyPopper className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold text-white">MOROSE</span>
+              <span className="text-xl font-bold text-white">IDEA</span>
             </div>
             <div className="hidden md:flex items-center space-x-8">
               <Link href="#details" className="text-gray-300 hover:text-white transition-colors">
@@ -109,7 +109,7 @@ export default function Home() {
               <PartyPopper className="h-16 w-16 text-rose-400" />
             </div>
             <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
-              MOROSE
+              IDEA
               <span className="bg-gradient-to-r from-rose-400 to-pink-400 bg-clip-text text-transparent block text-4xl md:text-5xl mt-2">
                 Partageons ensemble ce moment spécial
               </span>
@@ -341,7 +341,7 @@ export default function Home() {
       <footer className="border-t border-white/10 bg-black/40">
         <div className="container mx-auto px-4 py-8">
           <div className="text-center text-gray-400">
-            <p>&copy; 2025 MOROSE. Tous droits réservés.</p>
+            <p>&copy; 2025 IDEA. Tous droits réservés.</p>
           </div>
         </div>
       </footer>
