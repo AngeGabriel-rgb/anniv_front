@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { PartyPopper, ArrowRight, Star, Gift, Users, Calendar } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import Footer from "@/components/footer"
 
 export default function HomePage() {
   return (
@@ -17,7 +18,7 @@ export default function HomePage() {
               <div className="w-8 h-8 bg-gradient-to-r from-rose-500 to-pink-500 rounded-lg flex items-center justify-center">
                 <PartyPopper className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold text-white">IDEA</span>
+              <span className="text-xl font-bold text-white">Idea</span>
             </div>
             <div className="hidden md:flex items-center space-x-8">
               <a href="#about" className="text-gray-300 hover:text-white transition-colors">
@@ -78,7 +79,6 @@ export default function HomePage() {
                   </Link>
                 </CardContent>
               </Card>
-
             </div>
           </div>
         </div>
@@ -131,13 +131,7 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/10 bg-black/40">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center text-gray-400">
-            <p>&copy; 2025 IDEA. Tous droits réservés.</p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   )
 }
