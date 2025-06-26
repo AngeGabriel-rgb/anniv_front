@@ -79,12 +79,6 @@ export default function HomePage() {
                 </CardContent>
               </Card>
 
-              <p className="text-gray-400 text-sm">
-                Administrateur ?{" "}
-                <Link href="/auths/admin/login" className="text-rose-400 hover:text-rose-300 underline">
-                  Accès admin
-                </Link>
-              </p>
             </div>
           </div>
         </div>
