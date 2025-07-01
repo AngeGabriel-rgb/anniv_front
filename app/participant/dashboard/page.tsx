@@ -26,9 +26,10 @@ import {
   Star,
   Gift,
 } from "lucide-react"
-import { isAuthenticated, logout } from "@/lib/auth"
-import { fetchAnniversairesForParticipant } from "@/lib/api"
+import { isParticipantAuthenticated, logoutParticipant } from "@/lib/auth"
 import type { Anniversaire } from "@/app/types"
+
+const API_URL = "https://anniversaire-9n5a.onrender.com"
 
 export default function ParticipantDashboard() {
   const router = useRouter()
@@ -41,20 +42,31 @@ export default function ParticipantDashboard() {
 
   // Check authentication
   useEffect(() => {
-    const checkAuth = () => {
-      if (!isAuthenticated()) {
-        router.push("/participant/dashboard")
+    const checkAuth = async () => {
+      if (!isParticipantAuthenticated()) {
+        router.push("/")
         return false
       }
 
       try {
-        const participantData = localStorage.getItem("participant")
-        if (participantData) {
-          const data = JSON.parse(participantData)
-          setUserInfo({
-            name: data.name || "Participant",
-            email: data.email || "",
+        // Récupérer les infos du participant depuis le token ou une API
+        const token = localStorage.getItem("participantToken")
+        if (token) {
+          // Option 1: Décoder le token JWT si vous stockez les infos dedans
+          // Option 2: Faire une requête à l'API pour récupérer les infos
+          const response = await fetch(`${API_URL}/participants/me`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
           })
+
+          if (response.ok) {
+            const data = await response.json()
+            setUserInfo({
+              name: `${data.nom} ${data.prenom}`.trim(),
+              email: data.email,
+            })
+          }
         }
       } catch (err) {
         console.error("Erreur lors de la récupération des informations utilisateur:", err)
@@ -64,9 +76,11 @@ export default function ParticipantDashboard() {
       return true
     }
 
-    if (checkAuth()) {
-      getAnniversaires()
-    }
+    (async () => {
+      if (await checkAuth()) {
+        getAnniversaires()
+      }
+    })()
   }, [router])
 
   // Function to get anniversaires
@@ -74,9 +88,23 @@ export default function ParticipantDashboard() {
     setIsLoadingAnniversaires(true)
     setError(null)
     try {
-      const data = await fetchAnniversairesForParticipant()
-      // S'assurer que les données sont bien formatées
-      const formattedData = data.map((anniversaire) => ({
+      const token = localStorage.getItem("participantToken")
+      if (!token) {
+        throw new Error("Non authentifié")
+      }
+
+      const response = await fetch(`${API_URL}/participants/anniversaires`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Erreur lors de la récupération des anniversaires")
+      }
+
+      const data = await response.json()
+      const formattedData = data.map((anniversaire: any) => ({
         ...anniversaire,
         isParticipating: anniversaire.isParticipating || false,
       }))
@@ -84,9 +112,41 @@ export default function ParticipantDashboard() {
     } catch (err) {
       console.error("Erreur lors de la récupération des anniversaires:", err)
       setError("Impossible de charger les anniversaires. Veuillez vérifier votre connexion.")
-      setAnniversaires([]) // Vider la liste en cas d'erreur
+      setAnniversaires([])
     } finally {
       setIsLoadingAnniversaires(false)
+    }
+  }
+
+  // Function to toggle participation
+  const toggleParticipation = async (anniversaireId: string, currentStatus: boolean) => {
+    try {
+      const token = localStorage.getItem("participantToken")
+      if (!token) {
+        throw new Error("Non authentifié")
+      }
+
+      const method = currentStatus ? "DELETE" : "POST"
+      const response = await fetch(`${API_URL}/anniversaires/${anniversaireId}/participants`, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (response.ok) {
+        setAnniversaires(
+          anniversaires.map((anniv) =>
+            anniv.id === anniversaireId ? { ...anniv, isParticipating: !currentStatus } : anniv,
+          ),
+        )
+      } else {
+        throw new Error("Échec de la mise à jour de la participation")
+      }
+    } catch (err) {
+      console.error("Erreur lors de la mise à jour de la participation:", err)
+      setError("Impossible de mettre à jour votre participation. Veuillez réessayer.")
     }
   }
 
@@ -97,15 +157,6 @@ export default function ParticipantDashboard() {
       anniversaire.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       anniversaire.location?.toLowerCase().includes(searchTerm.toLowerCase()),
   )
-
-  // Function to toggle participation
-  const toggleParticipation = (anniversaireId: string, currentStatus: boolean) => {
-    setAnniversaires(
-      anniversaires.map((anniv) =>
-        anniv.id === anniversaireId ? { ...anniv, isParticipating: !currentStatus } : anniv,
-      ),
-    )
-  }
 
   if (loading) {
     return (
@@ -136,7 +187,10 @@ export default function ParticipantDashboard() {
             <Button
               variant="ghost"
               className="flex items-center gap-2 text-gray-300 hover:text-white hover:bg-white/10 border border-white/20"
-              onClick={logout}
+              onClick={() => {
+                logoutParticipant()
+                router.push("/")
+              }}
             >
               <LogOut className="h-4 w-4" />
               Déconnexion

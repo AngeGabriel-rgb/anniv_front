@@ -28,10 +28,23 @@ export default function AdminDashboard() {
 
   const [anniversaires, setAnniversaires] = useState<Anniversaire[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
+  const [loading, setLoading] = useState({
+    anniversaires: true,
+    participants: true
+  });
+  const [error, setError] = useState({
+    anniversaires: '',
+    participants: ''
+  });
+
+  const API_URL = "https://anniversaire-9n5a.onrender.com";
 
   const fetchAnniversaires = async () => {
+    setLoading(prev => ({...prev, anniversaires: true}));
+    setError(prev => ({...prev, anniversaires: ''}));
+    
     try {
-      const response = await fetch('https://anniversaire-qqem.onrender.com/anniversaires');
+      const response = await fetch(`${API_URL}/anniversaires`);
       if (!response.ok) {
         throw new Error("Erreur lors de la récupération des anniversaires");
       }
@@ -39,12 +52,18 @@ export default function AdminDashboard() {
       setAnniversaires(data);
     } catch (error) {
       console.error("Erreur:", error);
+      setError(prev => ({...prev, anniversaires: "Impossible de charger les anniversaires"}));
+    } finally {
+      setLoading(prev => ({...prev, anniversaires: false}));
     }
   };
 
   const fetchParticipants = async () => {
+    setLoading(prev => ({...prev, participants: true}));
+    setError(prev => ({...prev, participants: ''}));
+    
     try {
-      const response = await fetch('https://anniversaire-w9lu.onrender.com/participants');
+      const response = await fetch(`${API_URL}/participants`);
       if (!response.ok) {
         throw new Error("Erreur lors de la récupération des participants");
       }
@@ -52,12 +71,15 @@ export default function AdminDashboard() {
       setParticipants(data);
     } catch (error) {
       console.error("Erreur:", error);
+      setError(prev => ({...prev, participants: "Impossible de charger les participants"}));
+    } finally {
+      setLoading(prev => ({...prev, participants: false}));
     }
   };
 
   const handleCreateParticipant = async () => {
     try {
-      const response = await fetch('https://anniversaire-w9lu.onrender.com/participants', {
+      const response = await fetch(`${API_URL}/participants`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -75,6 +97,7 @@ export default function AdminDashboard() {
       fetchParticipants();
     } catch (error) {
       console.error("Erreur:", error);
+      setError(prev => ({...prev, participants: "Erreur lors de la création du participant"}));
     }
   };
 
@@ -130,46 +153,58 @@ export default function AdminDashboard() {
               </Button>
             </div>
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {anniversaires.map((anniversaire) => (
-                <Card key={anniversaire.id} className="backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow duration-200">
-                  <CardHeader className="flex flex-row items-start justify-between space-y-0">
-                    <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">
-                      {anniversaire.title}
-                    </CardTitle>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="icon" className="h-8 w-8">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="icon" className="h-8 w-8 text-rose-500 hover:text-rose-600">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                        <CalendarDays className="h-4 w-4 text-rose-500" />
-                        <span>{new Date(anniversaire.date).toLocaleDateString('fr-FR', { 
-                          weekday: 'long', 
-                          year: 'numeric', 
-                          month: 'long', 
-                          day: 'numeric' 
-                        })}</span>
+            {error.anniversaires && (
+              <div className="p-4 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400 rounded-lg">
+                {error.anniversaires}
+              </div>
+            )}
+
+            {loading.anniversaires ? (
+              <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-rose-500"></div>
+              </div>
+            ) : (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {anniversaires.map((anniversaire) => (
+                  <Card key={anniversaire.id} className="backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow duration-200">
+                    <CardHeader className="flex flex-row items-start justify-between space-y-0">
+                      <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">
+                        {anniversaire.title}
+                      </CardTitle>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="icon" className="h-8 w-8">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="icon" className="h-8 w-8 text-rose-500 hover:text-rose-600">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                        <MapPin className="h-4 w-4 text-rose-500" />
-                        <span>{anniversaire.location}</span>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                          <CalendarDays className="h-4 w-4 text-rose-500" />
+                          <span>{new Date(anniversaire.date).toLocaleDateString('fr-FR', { 
+                            weekday: 'long', 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                          })}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                          <MapPin className="h-4 w-4 text-rose-500" />
+                          <span>{anniversaire.location}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                          <Users className="h-4 w-4 text-rose-500" />
+                          <span>{anniversaire.maxGuests} invités maximum</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                        <Users className="h-4 w-4 text-rose-500" />
-                        <span>{anniversaire.maxGuests} invités maximum</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="participants" className="space-y-6">
@@ -191,51 +226,63 @@ export default function AdminDashboard() {
               </Button>
             </div>
 
-            <Card className="backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 border-gray-200 dark:border-gray-700">
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-200 dark:border-gray-700">
-                        <th className="text-left p-4 font-medium text-gray-600 dark:text-gray-400">Nom</th>
-                        <th className="text-left p-4 font-medium text-gray-600 dark:text-gray-400">Email</th>
-                        <th className="text-left p-4 font-medium text-gray-600 dark:text-gray-400">Invités</th>
-                        <th className="text-left p-4 font-medium text-gray-600 dark:text-gray-400">Statut</th>
-                        <th className="text-left p-4 font-medium text-gray-600 dark:text-gray-400">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {participants.map((participant) => (
-                        <tr key={participant.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-200">
-                          <td className="p-4 text-gray-900 dark:text-white">{participant.name}</td>
-                          <td className="p-4 text-gray-600 dark:text-gray-400">{participant.email}</td>
-                          <td className="p-4 text-gray-600 dark:text-gray-400">{participant.guests}</td>
-                          <td className="p-4">
-                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
-                              ${participant.status === 'confirmed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
-                              participant.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                              'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'}`}>
-                              {participant.status === 'confirmed' ? 'Confirmé' : 
-                               participant.status === 'pending' ? 'En attente' : 'Décliné'}
-                            </span>
-                          </td>
-                          <td className="p-4">
-                            <div className="flex gap-2">
-                              <Button variant="outline" size="icon" className="h-8 w-8">
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button variant="outline" size="icon" className="h-8 w-8 text-rose-500 hover:text-rose-600">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </td>
+            {error.participants && (
+              <div className="p-4 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400 rounded-lg">
+                {error.participants}
+              </div>
+            )}
+
+            {loading.participants ? (
+              <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-rose-500"></div>
+              </div>
+            ) : (
+              <Card className="backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 border-gray-200 dark:border-gray-700">
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-gray-200 dark:border-gray-700">
+                          <th className="text-left p-4 font-medium text-gray-600 dark:text-gray-400">Nom</th>
+                          <th className="text-left p-4 font-medium text-gray-600 dark:text-gray-400">Email</th>
+                          <th className="text-left p-4 font-medium text-gray-600 dark:text-gray-400">Invités</th>
+                          <th className="text-left p-4 font-medium text-gray-600 dark:text-gray-400">Statut</th>
+                          <th className="text-left p-4 font-medium text-gray-600 dark:text-gray-400">Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+                      </thead>
+                      <tbody>
+                        {participants.map((participant) => (
+                          <tr key={participant.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-200">
+                            <td className="p-4 text-gray-900 dark:text-white">{participant.name}</td>
+                            <td className="p-4 text-gray-600 dark:text-gray-400">{participant.email}</td>
+                            <td className="p-4 text-gray-600 dark:text-gray-400">{participant.guests}</td>
+                            <td className="p-4">
+                              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
+                                ${participant.status === 'confirmed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                                participant.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'}`}>
+                                {participant.status === 'confirmed' ? 'Confirmé' : 
+                                participant.status === 'pending' ? 'En attente' : 'Décliné'}
+                              </span>
+                            </td>
+                            <td className="p-4">
+                              <div className="flex gap-2">
+                                <Button variant="outline" size="icon" className="h-8 w-8">
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button variant="outline" size="icon" className="h-8 w-8 text-rose-500 hover:text-rose-600">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
         </Tabs>
       </main>

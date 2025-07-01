@@ -1,7 +1,7 @@
 import type { Participant, Anniversaire } from "@/app/types"
-import { getAuthToken } from "@/lib/auth"
+import { getAuthToken, getParticipantToken } from "@/lib/auth"
 
-const API_URL = "https://anniversaire-qqem.onrender.com"
+const API_URL = "https://anniversaire-9n5a.onrender.com"
 
 // Function to fetch participants
 export async function fetchParticipants(): Promise<Participant[]> {
@@ -65,13 +65,32 @@ export async function fetchAnniversaires(): Promise<Anniversaire[]> {
 
 // Function to fetch anniversaires for a participant
 export async function fetchAnniversairesForParticipant(): Promise<Anniversaire[]> {
-  // In a real app, this would fetch from the API with the participant's token
-  // For now, we'll return mock data
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve([])
-    }, 800)
-  })
+  const token = getParticipantToken()
+
+  if (!token) {
+    throw new Error("Vous n'êtes pas authentifié")
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/participants/anniversaires`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || "Erreur lors de la récupération des anniversaires")
+    }
+
+    const data = await response.json()
+    return data
+  } catch (error: unknown) {
+    console.error("Erreur lors de la récupération des anniversaires:", error)
+    throw error
+  }
 }
 
 // Function to create a participant
@@ -266,15 +285,20 @@ export async function removeParticipantFromAnniversaire(
   }
 }
 
-//modifie le status du participant dans l'anniversaire
-
+// Modifie le status du participant dans l'anniversaire
 export async function updateParticipant(participantId: string, isConfirmed: boolean) {
+  const token = getAuthToken()
+
+  if (!token) {
+    throw new Error("Vous n'êtes pas authentifié")
+  }
+
   try {
     const response = await fetch(`${API_URL}/participants/${participantId}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ est_confirme: isConfirmed }),
     })
@@ -300,11 +324,18 @@ export async function updateAnniversaire(
     participantIds: string[]
   },
 ) {
+  const token = getAuthToken()
+
+  if (!token) {
+    throw new Error("Vous n'êtes pas authentifié")
+  }
+
   try {
     const response = await fetch(`${API_URL}/anniversaires/${anniversaireId}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
         titre: anniversaire.titre,

@@ -11,8 +11,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { CalendarDays, Gift, PartyPopper, Users, Check, Star, ArrowRight, MapPin, Music, Utensils } from "lucide-react"
-import { registerParticipant, loginParticipant } from "@/lib/auth"
-import type { RegisterFormData, LoginFormData } from "../types"
 
 export default function Home() {
   const router = useRouter()
@@ -20,7 +18,13 @@ export default function Home() {
   const [loginError, setLoginError] = useState<string>("")
   const [loading, setLoading] = useState<boolean>(false)
   const [showConfirmation, setShowConfirmation] = useState<boolean>(false)
-  const [registeredParticipant, setRegisteredParticipant] = useState<RegisterFormData | null>(null)
+  const [registeredParticipant, setRegisteredParticipant] = useState<{
+    name: string
+    email: string
+    guests?: number
+  } | null>(null)
+
+  const API_URL = "https://anniversaire-9n5a.onrender.com"
 
   const handleRegister = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -28,16 +32,38 @@ export default function Home() {
     setLoading(true)
 
     const formData = new FormData(e.currentTarget)
-    const data: RegisterFormData = {
-      name: formData.get("name") as string,
+    const nameParts = (formData.get("name") as string).split(" ")
+    const data = {
+      nom: nameParts[0] || "",
+      prenom: nameParts.slice(1).join(" ") || "",
       email: formData.get("email") as string,
       password: formData.get("password") as string,
-      guests: Number(formData.get("guests") || 0),
     }
 
     try {
-      await registerParticipant(data)
-      setRegisteredParticipant(data)
+      const response = await fetch(`${API_URL}/auths/participants/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      })
+
+      const responseData = await response.json()
+
+      if (!response.ok) {
+        throw new Error(responseData.message || "Échec de l'inscription")
+      }
+
+      if (responseData.token) {
+        localStorage.setItem("participantToken", responseData.token)
+      }
+
+      setRegisteredParticipant({
+        name: `${data.nom} ${data.prenom}`.trim(),
+        email: data.email,
+        guests: Number(formData.get("guests")) || 0,
+      })
       setShowConfirmation(true)
     } catch (err) {
       setRegisterError(err instanceof Error ? err.message : "Une erreur est survenue")
@@ -52,13 +78,30 @@ export default function Home() {
     setLoading(true)
 
     const formData = new FormData(e.currentTarget)
-    const data: LoginFormData = {
+    const data = {
       email: formData.get("email") as string,
       password: formData.get("password") as string,
     }
 
     try {
-      await loginParticipant(data)
+      const response = await fetch(`${API_URL}/auths/participants/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      })
+
+      const responseData = await response.json()
+
+      if (!response.ok) {
+        throw new Error(responseData.message || "Échec de la connexion")
+      }
+
+      if (responseData.token) {
+        localStorage.setItem("participantToken", responseData.token)
+      }
+
       router.push("/participant/dashboard")
     } catch (err) {
       setLoginError(err instanceof Error ? err.message : "Une erreur est survenue")
