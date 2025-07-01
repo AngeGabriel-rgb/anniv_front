@@ -5,65 +5,94 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Users, Calendar, TrendingUp, Mail, Settings, LogOut, Eye, UserCheck, Clock } from "lucide-react"
+import { Users, Calendar, Mail, Settings, LogOut, Eye, UserCheck, Clock, Loader2 } from "lucide-react"
 import Link from "next/link"
+import { useAuth } from "@/lib/auth"
+import { participantApi } from "@/lib/api"
+import type { Participant } from "@/lib/types"
 
 export default function AdminDashboard() {
   const router = useRouter()
+  const { isAuthenticated, token, logout } = useAuth("admin")
   const [stats, setStats] = useState({
-    totalParticipants: 87,
-    confirmedParticipants: 65,
-    pendingParticipants: 15,
-    rejectedParticipants: 7,
-    totalEvents: 1,
-    vipRegistrations: 23,
+    totalParticipants: 0,
+    confirmedParticipants: 0,
+    pendingParticipants: 0,
+    rejectedParticipants: 0,
+    totalEvents: 0,
   })
+  const [recentRegistrations, setRecentRegistrations] = useState<Participant[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Vérifier l'authentification
-    const isAuth = localStorage.getItem("adminAuth")
-    if (!isAuth) {
+    if (!isAuthenticated) {
       router.push("/admin/login")
+      return
     }
-  }, [router])
 
-  const handleLogout = () => {
-    localStorage.removeItem("adminAuth")
-    router.push("/admin/login")
+    loadDashboardData()
+  }, [isAuthenticated, router, token])
+
+  const loadDashboardData = async () => {
+    if (!token) return
+
+    try {
+      setLoading(true)
+
+      // Récupérer tous les participants
+      const participantsResponse = await participantApi.getAll(token)
+
+      if (participantsResponse.success && participantsResponse.data) {
+        const participants = participantsResponse.data
+
+        // Calculer les statistiques
+        const totalParticipants = participants.length
+        const confirmedParticipants = participants.filter((p) => p.est_confirme).length
+        const pendingParticipants = participants.filter((p) => !p.est_confirme).length
+
+        setStats({
+          totalParticipants,
+          confirmedParticipants,
+          pendingParticipants,
+          rejectedParticipants: 0, // À implémenter si vous avez un statut "rejeté"
+          totalEvents: 0, // À récupérer depuis l'API anniversaires
+        })
+
+        // Prendre les 4 inscriptions les plus récentes
+        const recent = participants
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .slice(0, 4)
+
+        setRecentRegistrations(recent)
+      }
+    } catch (error) {
+      console.error("Erreur lors du chargement des données:", error)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const recentRegistrations = [
-    { id: 1, name: "Marie Dubois", email: "marie@email.com", status: "confirmed", type: "VIP", date: "2024-12-01" },
-    {
-      id: 2,
-      name: "Pierre Martin",
-      email: "pierre@email.com",
-      status: "pending",
-      type: "Standard",
-      date: "2024-12-01",
-    },
-    {
-      id: 3,
-      name: "Sophie Laurent",
-      email: "sophie@email.com",
-      status: "confirmed",
-      type: "Standard",
-      date: "2024-11-30",
-    },
-    { id: 4, name: "Jean Dupont", email: "jean@email.com", status: "confirmed", type: "VIP", date: "2024-11-30" },
-  ]
+  const handleLogout = () => {
+    logout()
+  }
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "confirmed":
-        return <Badge className="bg-green-100 text-green-800">Confirmée</Badge>
-      case "pending":
-        return <Badge className="bg-yellow-100 text-yellow-800">En attente</Badge>
-      case "rejected":
-        return <Badge className="bg-red-100 text-red-800">Refusée</Badge>
-      default:
-        return <Badge variant="secondary">Inconnu</Badge>
+  const getStatusBadge = (participant: Participant) => {
+    if (participant.est_confirme) {
+      return <Badge className="bg-green-100 text-green-800">Confirmée</Badge>
+    } else {
+      return <Badge className="bg-yellow-100 text-yellow-800">En attente</Badge>
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+          <p>Chargement du dashboard...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -101,10 +130,9 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.totalParticipants}</div>
-              <p className="text-xs text-muted-foreground">+12% par rapport au mois dernier</p>
+              <p className="text-xs text-muted-foreground">Inscriptions totales</p>
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Confirmés</CardTitle>
@@ -113,11 +141,13 @@ export default function AdminDashboard() {
             <CardContent>
               <div className="text-2xl font-bold text-green-600">{stats.confirmedParticipants}</div>
               <p className="text-xs text-muted-foreground">
-                {Math.round((stats.confirmedParticipants / stats.totalParticipants) * 100)}% du total
+                {stats.totalParticipants > 0
+                  ? Math.round((stats.confirmedParticipants / stats.totalParticipants) * 100)
+                  : 0}
+                % du total
               </p>
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">En Attente</CardTitle>
@@ -128,17 +158,14 @@ export default function AdminDashboard() {
               <p className="text-xs text-muted-foreground">Nécessitent une validation</p>
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Inscriptions VIP</CardTitle>
-              <TrendingUp className="h-4 w-4 text-purple-600" />
+              <CardTitle className="text-sm font-medium">Événements</CardTitle>
+              <Calendar className="h-4 w-4 text-purple-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-purple-600">{stats.vipRegistrations}</div>
-              <p className="text-xs text-muted-foreground">
-                {Math.round((stats.vipRegistrations / stats.totalParticipants) * 100)}% du total
-              </p>
+              <div className="text-2xl font-bold text-purple-600">{stats.totalEvents}</div>
+              <p className="text-xs text-muted-foreground">Événements créés</p>
             </CardContent>
           </Card>
         </div>
@@ -155,21 +182,27 @@ export default function AdminDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {recentRegistrations.map((registration) => (
-                  <div key={registration.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="font-medium">{registration.name}</p>
-                      <p className="text-sm text-gray-600">{registration.email}</p>
-                      <p className="text-xs text-gray-500">{registration.date}</p>
+              {recentRegistrations.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>Aucune inscription pour le moment</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {recentRegistrations.map((registration) => (
+                    <div key={registration.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div>
+                        <p className="font-medium">
+                          {registration.prenom} {registration.nom}
+                        </p>
+                        <p className="text-sm text-gray-600">{registration.email}</p>
+                        <p className="text-xs text-gray-500">{new Date(registration.createdAt).toLocaleDateString()}</p>
+                      </div>
+                      <div className="flex items-center space-x-2">{getStatusBadge(registration)}</div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant={registration.type === "VIP" ? "default" : "secondary"}>{registration.type}</Badge>
-                      {getStatusBadge(registration.status)}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -189,7 +222,6 @@ export default function AdminDashboard() {
                     </div>
                   </Link>
                 </Button>
-
                 <Button asChild variant="outline" className="justify-start h-auto p-4 bg-transparent">
                   <Link href="/admin/anniversaires">
                     <Calendar className="w-5 h-5 mr-3" />
@@ -199,7 +231,6 @@ export default function AdminDashboard() {
                     </div>
                   </Link>
                 </Button>
-
                 <Button variant="outline" className="justify-start h-auto p-4 bg-transparent">
                   <Mail className="w-5 h-5 mr-3" />
                   <div className="text-left">
@@ -207,7 +238,6 @@ export default function AdminDashboard() {
                     <div className="text-sm opacity-70">Notifications et rappels</div>
                   </div>
                 </Button>
-
                 <Button variant="outline" className="justify-start h-auto p-4 bg-transparent">
                   <Settings className="w-5 h-5 mr-3" />
                   <div className="text-left">

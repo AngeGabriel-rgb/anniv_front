@@ -7,9 +7,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Card, CardContent } from "@/components/ui/card"
-import { User, Mail, Lock, Users, Check, AlertCircle } from "lucide-react"
+import { User, Mail, Lock, Users, Check, AlertCircle, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { participantAuth } from "@/lib/auth"
 
 interface RegistrationModalProps {
   open: boolean
@@ -27,14 +27,12 @@ export function RegistrationModal({ open, onOpenChange }: RegistrationModalProps
     password: "",
     confirmPassword: "",
     guests: "0",
-    offerType: "standard",
     acceptTerms: false,
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const validateStep1 = () => {
     const newErrors: Record<string, string> = {}
-
     if (!formData.firstName.trim()) newErrors.firstName = "Prénom requis"
     if (!formData.lastName.trim()) newErrors.lastName = "Nom requis"
     if (!formData.email.trim()) {
@@ -57,11 +55,9 @@ export function RegistrationModal({ open, onOpenChange }: RegistrationModalProps
 
   const validateStep2 = () => {
     const newErrors: Record<string, string> = {}
-
     if (!formData.acceptTerms) {
       newErrors.acceptTerms = "Vous devez accepter les conditions"
     }
-
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -77,27 +73,52 @@ export function RegistrationModal({ open, onOpenChange }: RegistrationModalProps
 
     setLoading(true)
 
-    // Simulation d'envoi
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    try {
+      const userData = {
+        nom: formData.lastName,
+        prenom: formData.firstName,
+        email: formData.email,
+        password: formData.password,
+        guests: Number.parseInt(formData.guests),
+      }
 
-    toast({
-      title: "Inscription réussie !",
-      description: "Vous recevrez un email de confirmation sous peu.",
-    })
+      const response = await participantAuth.register(userData)
 
-    setLoading(false)
-    onOpenChange(false)
-    setStep(1)
-    setFormData({
-      firstName: "",
-      lastName: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-      guests: "0",
-      offerType: "standard",
-      acceptTerms: false,
-    })
+      if (response.success) {
+        toast({
+          title: "Inscription réussie !",
+          description: response.data?.message || "Vous recevrez un email de confirmation sous peu.",
+        })
+
+        // Réinitialiser le formulaire
+        onOpenChange(false)
+        setStep(1)
+        setFormData({
+          firstName: "",
+          lastName: "",
+          email: "",
+          password: "",
+          confirmPassword: "",
+          guests: "0",
+          acceptTerms: false,
+        })
+        setErrors({})
+      } else {
+        toast({
+          title: "Erreur d'inscription",
+          description: response.error || "Une erreur est survenue lors de l'inscription.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Une erreur inattendue est survenue.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
   }
 
   const updateFormData = (field: string, value: string | boolean) => {
@@ -112,7 +133,7 @@ export function RegistrationModal({ open, onOpenChange }: RegistrationModalProps
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-            Inscription à l'Événement
+            Inscription Gratuite
           </DialogTitle>
         </DialogHeader>
 
@@ -149,6 +170,7 @@ export function RegistrationModal({ open, onOpenChange }: RegistrationModalProps
                     className="pl-10"
                     value={formData.firstName}
                     onChange={(e) => updateFormData("firstName", e.target.value)}
+                    disabled={loading}
                   />
                 </div>
                 {errors.firstName && (
@@ -158,7 +180,6 @@ export function RegistrationModal({ open, onOpenChange }: RegistrationModalProps
                   </p>
                 )}
               </div>
-
               <div>
                 <Label htmlFor="lastName">Nom *</Label>
                 <div className="relative">
@@ -169,6 +190,7 @@ export function RegistrationModal({ open, onOpenChange }: RegistrationModalProps
                     className="pl-10"
                     value={formData.lastName}
                     onChange={(e) => updateFormData("lastName", e.target.value)}
+                    disabled={loading}
                   />
                 </div>
                 {errors.lastName && (
@@ -191,6 +213,7 @@ export function RegistrationModal({ open, onOpenChange }: RegistrationModalProps
                   className="pl-10"
                   value={formData.email}
                   onChange={(e) => updateFormData("email", e.target.value)}
+                  disabled={loading}
                 />
               </div>
               {errors.email && (
@@ -212,6 +235,7 @@ export function RegistrationModal({ open, onOpenChange }: RegistrationModalProps
                   className="pl-10"
                   value={formData.password}
                   onChange={(e) => updateFormData("password", e.target.value)}
+                  disabled={loading}
                 />
               </div>
               {errors.password && (
@@ -233,6 +257,7 @@ export function RegistrationModal({ open, onOpenChange }: RegistrationModalProps
                   className="pl-10"
                   value={formData.confirmPassword}
                   onChange={(e) => updateFormData("confirmPassword", e.target.value)}
+                  disabled={loading}
                 />
               </div>
               {errors.confirmPassword && (
@@ -246,6 +271,7 @@ export function RegistrationModal({ open, onOpenChange }: RegistrationModalProps
             <Button
               onClick={handleNext}
               className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              disabled={loading}
             >
               Continuer
             </Button>
@@ -258,7 +284,11 @@ export function RegistrationModal({ open, onOpenChange }: RegistrationModalProps
               <Label htmlFor="guests">Nombre d'accompagnants</Label>
               <div className="relative">
                 <Users className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                <Select value={formData.guests} onValueChange={(value) => updateFormData("guests", value)}>
+                <Select
+                  value={formData.guests}
+                  onValueChange={(value) => updateFormData("guests", value)}
+                  disabled={loading}
+                >
                   <SelectTrigger className="pl-10">
                     <SelectValue placeholder="Sélectionnez" />
                   </SelectTrigger>
@@ -272,59 +302,11 @@ export function RegistrationModal({ open, onOpenChange }: RegistrationModalProps
               </div>
             </div>
 
-            <div>
-              <Label>Type d'inscription</Label>
-              <div className="grid grid-cols-1 gap-3 mt-2">
-                <Card
-                  className={`cursor-pointer transition-all ${
-                    formData.offerType === "standard" ? "border-purple-500 bg-purple-50" : "hover:bg-gray-50"
-                  }`}
-                  onClick={() => updateFormData("offerType", "standard")}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-3">
-                      <div
-                        className={`w-4 h-4 rounded-full border-2 ${
-                          formData.offerType === "standard" ? "border-purple-500 bg-purple-500" : "border-gray-300"
-                        }`}
-                      >
-                        {formData.offerType === "standard" && (
-                          <div className="w-2 h-2 bg-white rounded-full mx-auto mt-0.5"></div>
-                        )}
-                      </div>
-                      <div>
-                        <h4 className="font-semibold">Standard - Gratuit</h4>
-                        <p className="text-sm text-gray-600">Accès complet à l'événement</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card
-                  className={`cursor-pointer transition-all ${
-                    formData.offerType === "vip" ? "border-purple-500 bg-purple-50" : "hover:bg-gray-50"
-                  }`}
-                  onClick={() => updateFormData("offerType", "vip")}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-3">
-                      <div
-                        className={`w-4 h-4 rounded-full border-2 ${
-                          formData.offerType === "vip" ? "border-purple-500 bg-purple-500" : "border-gray-300"
-                        }`}
-                      >
-                        {formData.offerType === "vip" && (
-                          <div className="w-2 h-2 bg-white rounded-full mx-auto mt-0.5"></div>
-                        )}
-                      </div>
-                      <div>
-                        <h4 className="font-semibold">VIP - 25€</h4>
-                        <p className="text-sm text-gray-600">Avantages exclusifs inclus</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <h4 className="font-semibold text-green-800 mb-2">Inscription Gratuite</h4>
+              <p className="text-sm text-green-700">
+                Accès complet à l'événement, dîner inclus, spectacle et animations, photos souvenirs
+              </p>
             </div>
 
             <div className="flex items-start space-x-2">
@@ -332,12 +314,14 @@ export function RegistrationModal({ open, onOpenChange }: RegistrationModalProps
                 id="terms"
                 checked={formData.acceptTerms}
                 onCheckedChange={(checked) => updateFormData("acceptTerms", checked as boolean)}
+                disabled={loading}
               />
               <Label htmlFor="terms" className="text-sm leading-relaxed">
                 J'accepte les conditions générales et la politique de confidentialité. Je consens à recevoir des
                 informations sur l'événement.
               </Label>
             </div>
+
             {errors.acceptTerms && (
               <p className="text-sm text-red-600 flex items-center">
                 <AlertCircle className="w-4 h-4 mr-1" />
@@ -346,7 +330,7 @@ export function RegistrationModal({ open, onOpenChange }: RegistrationModalProps
             )}
 
             <div className="flex space-x-3">
-              <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
+              <Button variant="outline" onClick={() => setStep(1)} className="flex-1" disabled={loading}>
                 Retour
               </Button>
               <Button
@@ -354,7 +338,14 @@ export function RegistrationModal({ open, onOpenChange }: RegistrationModalProps
                 disabled={loading}
                 className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
               >
-                {loading ? "Inscription..." : "Confirmer l'inscription"}
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Inscription...
+                  </>
+                ) : (
+                  "Confirmer l'inscription"
+                )}
               </Button>
             </div>
           </div>

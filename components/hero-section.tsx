@@ -10,6 +10,16 @@ export function HeroSection() {
 
   return (
     <section className="relative min-h-screen flex items-center justify-center px-4 py-20 overflow-hidden">
+      {/* Background Image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: `url('https://i.pinimg.com/736x/19/65/cc/1965ccb8e54fa6d673cf23108c02eb9f.jpg')`,
+        }}
+      >
+        <div className="absolute inset-0 bg-black/40"></div>
+      </div>
+
       {/* Background decorative elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full opacity-20 animate-pulse"></div>
@@ -19,25 +29,25 @@ export function HeroSection() {
 
       <div className="relative z-10 text-center max-w-4xl mx-auto">
         <div className="mb-8 animate-fade-in">
-          <Sparkles className="w-16 h-16 mx-auto mb-6 text-purple-600 animate-bounce" />
-          <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 bg-clip-text text-transparent mb-6 animate-slide-up">
+          <Sparkles className="w-16 h-16 mx-auto mb-6 text-white animate-bounce" />
+          <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 animate-slide-up drop-shadow-lg">
             Célébrons Ensemble
           </h1>
-          <p className="text-xl md:text-2xl text-gray-700 mb-8 animate-slide-up delay-200">
+          <p className="text-xl md:text-2xl text-white/90 mb-8 animate-slide-up delay-200 drop-shadow-md">
             Un anniversaire inoubliable vous attend
           </p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-6 mb-12 animate-slide-up delay-400">
-          <div className="flex items-center justify-center space-x-3 bg-white/80 backdrop-blur-sm rounded-lg p-4 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+          <div className="flex items-center justify-center space-x-3 bg-white/90 backdrop-blur-sm rounded-lg p-4 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
             <Calendar className="w-6 h-6 text-purple-600" />
             <span className="font-semibold text-gray-800">15 Décembre 2024</span>
           </div>
-          <div className="flex items-center justify-center space-x-3 bg-white/80 backdrop-blur-sm rounded-lg p-4 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+          <div className="flex items-center justify-center space-x-3 bg-white/90 backdrop-blur-sm rounded-lg p-4 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
             <MapPin className="w-6 h-6 text-pink-600" />
             <span className="font-semibold text-gray-800">Salle des Fêtes</span>
           </div>
-          <div className="flex items-center justify-center space-x-3 bg-white/80 backdrop-blur-sm rounded-lg p-4 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+          <div className="flex items-center justify-center space-x-3 bg-white/90 backdrop-blur-sm rounded-lg p-4 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
             <Users className="w-6 h-6 text-orange-600" />
             <span className="font-semibold text-gray-800">150 Invités</span>
           </div>

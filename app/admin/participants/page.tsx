@@ -9,98 +9,43 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Search, Filter, MoreHorizontal, Check, X, Clock, ArrowLeft, Download } from "lucide-react"
+import {
+  Search,
+  Filter,
+  MoreHorizontal,
+  Check,
+  Clock,
+  ArrowLeft,
+  Download,
+  Users,
+  Loader2,
+  RefreshCw,
+} from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
-
-interface Participant {
-  id: number
-  firstName: string
-  lastName: string
-  email: string
-  status: "confirmed" | "pending" | "rejected"
-  type: "Standard" | "VIP"
-  guests: number
-  registrationDate: string
-}
+import { useAuth } from "@/lib/auth"
+import { participantApi, exportData } from "@/lib/api"
+import type { Participant } from "@/lib/types"
 
 export default function ParticipantsPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const [participants, setParticipants] = useState<Participant[]>([
-    {
-      id: 1,
-      firstName: "Marie",
-      lastName: "Dubois",
-      email: "marie@email.com",
-      status: "confirmed",
-      type: "VIP",
-      guests: 1,
-      registrationDate: "2024-12-01",
-    },
-    {
-      id: 2,
-      firstName: "Pierre",
-      lastName: "Martin",
-      email: "pierre@email.com",
-      status: "pending",
-      type: "Standard",
-      guests: 0,
-      registrationDate: "2024-12-01",
-    },
-    {
-      id: 3,
-      firstName: "Sophie",
-      lastName: "Laurent",
-      email: "sophie@email.com",
-      status: "confirmed",
-      type: "Standard",
-      guests: 2,
-      registrationDate: "2024-11-30",
-    },
-    {
-      id: 4,
-      firstName: "Jean",
-      lastName: "Dupont",
-      email: "jean@email.com",
-      status: "confirmed",
-      type: "VIP",
-      guests: 1,
-      registrationDate: "2024-11-30",
-    },
-    {
-      id: 5,
-      firstName: "Anne",
-      lastName: "Moreau",
-      email: "anne@email.com",
-      status: "rejected",
-      type: "Standard",
-      guests: 0,
-      registrationDate: "2024-11-29",
-    },
-    {
-      id: 6,
-      firstName: "Paul",
-      lastName: "Bernard",
-      email: "paul@email.com",
-      status: "pending",
-      type: "VIP",
-      guests: 3,
-      registrationDate: "2024-11-29",
-    },
-  ])
-
-  const [filteredParticipants, setFilteredParticipants] = useState<Participant[]>(participants)
+  const { isAuthenticated, token } = useAuth("admin")
+  const [participants, setParticipants] = useState<Participant[]>([])
+  const [filteredParticipants, setFilteredParticipants] = useState<Participant[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
-  const [typeFilter, setTypeFilter] = useState("all")
+  const [loading, setLoading] = useState(true)
+  const [actionLoading, setActionLoading] = useState<number | null>(null)
 
   useEffect(() => {
-    const isAuth = localStorage.getItem("adminAuth")
-    if (!isAuth) {
+    if (!isAuthenticated) {
       router.push("/admin/login")
+      return
     }
-  }, [router])
+
+    loadParticipants()
+  }, [isAuthenticated, router, token])
 
   useEffect(() => {
     let filtered = participants
@@ -108,74 +53,147 @@ export default function ParticipantsPage() {
     if (searchTerm) {
       filtered = filtered.filter(
         (p) =>
-          p.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.prenom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
           p.email.toLowerCase().includes(searchTerm.toLowerCase()),
       )
     }
 
     if (statusFilter !== "all") {
-      filtered = filtered.filter((p) => p.status === statusFilter)
-    }
-
-    if (typeFilter !== "all") {
-      filtered = filtered.filter((p) => p.type === typeFilter)
+      if (statusFilter === "confirmed") {
+        filtered = filtered.filter((p) => p.est_confirme)
+      } else if (statusFilter === "pending") {
+        filtered = filtered.filter((p) => !p.est_confirme)
+      }
     }
 
     setFilteredParticipants(filtered)
-  }, [participants, searchTerm, statusFilter, typeFilter])
+  }, [participants, searchTerm, statusFilter])
 
-  const updateParticipantStatus = (id: number, newStatus: "confirmed" | "pending" | "rejected") => {
-    setParticipants((prev) => prev.map((p) => (p.id === id ? { ...p, status: newStatus } : p)))
+  const loadParticipants = async () => {
+    if (!token) return
 
-    const statusText = {
-      confirmed: "confirmée",
-      pending: "en attente",
-      rejected: "refusée",
+    try {
+      setLoading(true)
+      const response = await participantApi.getAll(token)
+
+      if (response.success && response.data) {
+        setParticipants(response.data)
+      } else {
+        toast({
+          title: "Erreur",
+          description: response.error || "Impossible de charger les participants",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors du chargement",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
     }
-
-    toast({
-      title: "Statut mis à jour",
-      description: `Inscription ${statusText[newStatus]}`,
-    })
   }
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "confirmed":
-        return <Badge className="bg-green-100 text-green-800">Confirmée</Badge>
-      case "pending":
-        return <Badge className="bg-yellow-100 text-yellow-800">En attente</Badge>
-      case "rejected":
-        return <Badge className="bg-red-100 text-red-800">Refusée</Badge>
-      default:
-        return <Badge variant="secondary">Inconnu</Badge>
+  const updateParticipantStatus = async (id: number, newStatus: boolean) => {
+    if (!token) return
+
+    try {
+      setActionLoading(id)
+      const response = await participantApi.update(token, id, { est_confirme: newStatus })
+
+      if (response.success) {
+        setParticipants((prev) => prev.map((p) => (p.id === id ? { ...p, est_confirme: newStatus } : p)))
+
+        toast({
+          title: "Statut mis à jour",
+          description: `Inscription ${newStatus ? "confirmée" : "mise en attente"}`,
+        })
+      } else {
+        toast({
+          title: "Erreur",
+          description: response.error || "Impossible de mettre à jour le statut",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue",
+        variant: "destructive",
+      })
+    } finally {
+      setActionLoading(null)
     }
   }
 
-  const exportData = () => {
-    const csvContent = [
-      ["Prénom", "Nom", "Email", "Statut", "Type", "Accompagnants", "Date d'inscription"],
-      ...filteredParticipants.map((p) => [
-        p.firstName,
-        p.lastName,
-        p.email,
-        p.status,
-        p.type,
-        p.guests.toString(),
-        p.registrationDate,
-      ]),
-    ]
-      .map((row) => row.join(","))
-      .join("\n")
+  const regenerateCode = async (id: number) => {
+    if (!token) return
 
-    const blob = new Blob([csvContent], { type: "text/csv" })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = "participants.csv"
-    a.click()
-    window.URL.revokeObjectURL(url)
+    try {
+      setActionLoading(id)
+      const response = await participantApi.regenerateCode(token, id)
+
+      if (response.success) {
+        toast({
+          title: "Code régénéré",
+          description: "Un nouveau code a été envoyé par email",
+        })
+      } else {
+        toast({
+          title: "Erreur",
+          description: response.error || "Impossible de régénérer le code",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue",
+        variant: "destructive",
+      })
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleExport = async () => {
+    if (!token) return
+
+    try {
+      await exportData.exportParticipants(token)
+      toast({
+        title: "Export réussi",
+        description: "Le fichier CSV a été téléchargé",
+      })
+    } catch (error) {
+      toast({
+        title: "Erreur d'export",
+        description: "Impossible d'exporter les données",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const getStatusBadge = (participant: Participant) => {
+    if (participant.est_confirme) {
+      return <Badge className="bg-green-100 text-green-800">Confirmée</Badge>
+    } else {
+      return <Badge className="bg-yellow-100 text-yellow-800">En attente</Badge>
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+          <p>Chargement des participants...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -195,10 +213,16 @@ export default function ParticipantsPage() {
                 Gestion des Participants
               </h1>
             </div>
-            <Button onClick={exportData} variant="outline" size="sm">
-              <Download className="w-4 h-4 mr-2" />
-              Exporter CSV
-            </Button>
+            <div className="flex items-center space-x-2">
+              <Button onClick={loadParticipants} variant="outline" size="sm">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Actualiser
+              </Button>
+              <Button onClick={handleExport} variant="outline" size="sm" disabled={filteredParticipants.length === 0}>
+                <Download className="w-4 h-4 mr-2" />
+                Exporter CSV
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -220,7 +244,6 @@ export default function ParticipantsPage() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="Statut" />
@@ -229,21 +252,9 @@ export default function ParticipantsPage() {
                   <SelectItem value="all">Tous les statuts</SelectItem>
                   <SelectItem value="confirmed">Confirmées</SelectItem>
                   <SelectItem value="pending">En attente</SelectItem>
-                  <SelectItem value="rejected">Refusées</SelectItem>
                 </SelectContent>
               </Select>
-
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les types</SelectItem>
-                  <SelectItem value="Standard">Standard</SelectItem>
-                  <SelectItem value="VIP">VIP</SelectItem>
-                </SelectContent>
-              </Select>
-
+              <div></div>
               <div className="flex items-center space-x-2">
                 <Filter className="w-4 h-4 text-gray-400" />
                 <span className="text-sm text-gray-600">{filteredParticipants.length} résultat(s)</span>
@@ -258,69 +269,89 @@ export default function ParticipantsPage() {
             <CardTitle>Liste des Participants ({filteredParticipants.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nom</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Accompagnants</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Date d'inscription</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredParticipants.map((participant) => (
-                    <TableRow key={participant.id}>
-                      <TableCell className="font-medium">
-                        {participant.firstName} {participant.lastName}
-                      </TableCell>
-                      <TableCell>{participant.email}</TableCell>
-                      <TableCell>
-                        <Badge variant={participant.type === "VIP" ? "default" : "secondary"}>{participant.type}</Badge>
-                      </TableCell>
-                      <TableCell>{participant.guests}</TableCell>
-                      <TableCell>{getStatusBadge(participant.status)}</TableCell>
-                      <TableCell>{participant.registrationDate}</TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => updateParticipantStatus(participant.id, "confirmed")}
-                              className="text-green-600"
-                            >
-                              <Check className="mr-2 h-4 w-4" />
-                              Confirmer
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => updateParticipantStatus(participant.id, "pending")}
-                              className="text-yellow-600"
-                            >
-                              <Clock className="mr-2 h-4 w-4" />
-                              En attente
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => updateParticipantStatus(participant.id, "rejected")}
-                              className="text-red-600"
-                            >
-                              <X className="mr-2 h-4 w-4" />
-                              Refuser
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
+            {filteredParticipants.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <Users className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                <h3 className="text-lg font-medium mb-2">
+                  {participants.length === 0 ? "Aucun participant" : "Aucun résultat"}
+                </h3>
+                <p>
+                  {participants.length === 0
+                    ? "Les inscriptions apparaîtront ici une fois soumises."
+                    : "Essayez de modifier vos critères de recherche."}
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nom</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Accompagnants</TableHead>
+                      <TableHead>Statut</TableHead>
+                      <TableHead>Date d'inscription</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredParticipants.map((participant) => (
+                      <TableRow key={participant.id}>
+                        <TableCell className="font-medium">
+                          {participant.prenom} {participant.nom}
+                        </TableCell>
+                        <TableCell>{participant.email}</TableCell>
+                        <TableCell>{participant.guests || 0}</TableCell>
+                        <TableCell>{getStatusBadge(participant)}</TableCell>
+                        <TableCell>{new Date(participant.createdAt).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                className="h-8 w-8 p-0"
+                                disabled={actionLoading === participant.id}
+                              >
+                                {actionLoading === participant.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <MoreHorizontal className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => updateParticipantStatus(participant.id, true)}
+                                className="text-green-600"
+                                disabled={participant.est_confirme}
+                              >
+                                <Check className="mr-2 h-4 w-4" />
+                                Confirmer
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => updateParticipantStatus(participant.id, false)}
+                                className="text-yellow-600"
+                                disabled={!participant.est_confirme}
+                              >
+                                <Clock className="mr-2 h-4 w-4" />
+                                En attente
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => regenerateCode(participant.id)}
+                                className="text-blue-600"
+                              >
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                                Régénérer code
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
