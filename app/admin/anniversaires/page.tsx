@@ -7,76 +7,72 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import {
-  Calendar,
-  MapPin,
-  Users,
-  Plus,
-  Edit,
-  Trash2,
-  MoreHorizontal,
-  ArrowLeft,
-  Clock,
-  Loader2,
-  RefreshCw,
-} from "lucide-react"
+import { Calendar, Users, Plus, Edit, Trash2, MoreHorizontal, ArrowLeft, Loader2, RefreshCw } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
-import { useAuth } from "@/lib/auth"
-import { anniversaireApi } from "@/lib/api"
-import type { Anniversaire } from "@/lib/types"
+import { tokenManager } from "@/lib/api"
+import { adminAuth } from "@/lib/auth"
+import {
+  fetchAnniversaires,
+  fetchParticipants,
+  createAnniversaire,
+  updateAnniversaire,
+  deleteAnniversaire,
+} from "@/lib/api"
+import type { Anniversaire, Participant } from "@/lib/types"
 
 export default function AnniversairesPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const { isAuthenticated, token } = useAuth("admin")
   const [events, setEvents] = useState<Anniversaire[]>([])
+  const [participants, setParticipants] = useState<Participant[]>([])
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [editingEvent, setEditingEvent] = useState<Anniversaire | null>(null)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
+  const [participantsLoading, setParticipantsLoading] = useState(false)
+  const [currentAdminId, setCurrentAdminId] = useState<number | null>(null)
   const [formData, setFormData] = useState({
-    titre: "",
-    description: "",
     date: "",
-    time: "",
-    location: "",
-    maxParticipants: 100,
+    description: "",
+    participantId: "",
   })
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    const token = tokenManager.getToken("admin")
+
+    if (!token) {
       router.push("/admin/login")
       return
     }
 
+    // Récupérer l'ID de l'admin connecté
+    const decodedToken = adminAuth.decodeToken(token)
+    if (decodedToken && decodedToken.adminId) {
+      setCurrentAdminId(decodedToken.adminId)
+    }
+
     loadEvents()
-  }, [isAuthenticated, router, token])
+    loadParticipants()
+  }, [router])
 
   const loadEvents = async () => {
-    if (!token) return
-
     try {
       setLoading(true)
-      const response = await anniversaireApi.getAll(token)
+      console.log("Chargement des événements...")
 
-      if (response.success && response.data) {
-        setEvents(response.data)
-      } else {
-        toast({
-          title: "Erreur",
-          description: response.error || "Impossible de charger les événements",
-          variant: "destructive",
-        })
-      }
+      const data = await fetchAnniversaires()
+      console.log("Événements récupérés:", data)
+      setEvents(data)
     } catch (error) {
+      console.error("Erreur lors du chargement des événements:", error)
       toast({
         title: "Erreur",
-        description: "Une erreur est survenue lors du chargement",
+        description: error instanceof Error ? error.message : "Impossible de charger les événements",
         variant: "destructive",
       })
     } finally {
@@ -84,58 +80,85 @@ export default function AnniversairesPage() {
     }
   }
 
+  const loadParticipants = async () => {
+    try {
+      setParticipantsLoading(true)
+      const data = await fetchParticipants()
+
+      // Filtrer seulement les participants confirmés
+      const confirmedParticipants = data.filter((p) => p.est_confirme)
+      setParticipants(confirmedParticipants)
+    } catch (error) {
+      console.error("Erreur lors du chargement des participants:", error)
+    } finally {
+      setParticipantsLoading(false)
+    }
+  }
+
   const resetForm = () => {
     setFormData({
-      titre: "",
-      description: "",
       date: "",
-      time: "",
-      location: "",
-      maxParticipants: 100,
+      description: "",
+      participantId: "",
     })
     setEditingEvent(null)
   }
 
+  const validateForm = () => {
+    if (!formData.date) {
+      toast({
+        title: "Erreur de validation",
+        description: "La date est requise",
+        variant: "destructive",
+      })
+      return false
+    }
+
+    if (!formData.participantId) {
+      toast({
+        title: "Erreur de validation",
+        description: "Vous devez sélectionner un participant",
+        variant: "destructive",
+      })
+      return false
+    }
+
+    return true
+  }
+
   const handleCreateEvent = async () => {
-    if (!token) return
+    if (!validateForm() || !currentAdminId) return
 
     try {
       setActionLoading(true)
+      console.log("Création d'un événement avec les données:", formData)
 
+      // Préparer les données selon la structure exacte de la DB
       const eventData = {
-        titre: formData.titre,
-        description: formData.description,
-        date: new Date(formData.date),
-        time: formData.time,
-        location: formData.location,
-        maxParticipants: formData.maxParticipants,
-        status: "draft" as const,
-        adminId: 1, // À récupérer depuis le token décodé
+        date: new Date(formData.date).toISOString(), // Convertir en timestamp
+        description: formData.description.trim() || undefined,
+        participantId: Number.parseInt(formData.participantId),
+        adminId: currentAdminId,
       }
 
-      const response = await anniversaireApi.create(token, eventData)
+      console.log("Données envoyées à l'API:", eventData)
 
-      if (response.success && response.data) {
-        if (response.data) {
-          setEvents((prev) => [...prev, response.data as Anniversaire])
-        }
-        setShowCreateModal(false)
-        resetForm()
-        toast({
-          title: "Événement créé",
-          description: "Le nouvel événement a été créé avec succès",
-        })
-      } else {
-        toast({
-          title: "Erreur",
-          description: response.error || "Impossible de créer l'événement",
-          variant: "destructive",
-        })
-      }
+      const newEvent = await createAnniversaire(eventData)
+      console.log("Événement créé:", newEvent)
+
+      setEvents((prev) => [...prev, newEvent])
+      setShowCreateModal(false)
+      resetForm()
+
+      toast({
+        title: "Événement créé",
+        description: "L'événement a été créé avec succès",
+      })
     } catch (error) {
+      console.error("Erreur lors de la création:", error)
       toast({
         title: "Erreur",
-        description: "Une erreur est survenue",
+        description: error instanceof Error ? error.message : "Impossible de créer l'événement",
         variant: "destructive",
       })
     } finally {
@@ -144,54 +167,45 @@ export default function AnniversairesPage() {
   }
 
   const handleEditEvent = (event: Anniversaire) => {
+    console.log("Édition de l'événement:", event)
     setEditingEvent(event)
     setFormData({
-      titre: event.titre,
-      description: event.description || "",
       date: new Date(event.date).toISOString().split("T")[0],
-      time: event.time || "",
-      location: event.location || "",
-      maxParticipants: event.maxParticipants,
+      description: event.description || "",
+      participantId: event.participantId?.toString() || "",
     })
     setShowCreateModal(true)
   }
 
   const handleUpdateEvent = async () => {
-    if (!editingEvent || !token) return
+    if (!validateForm() || !editingEvent) return
 
     try {
       setActionLoading(true)
 
       const eventData = {
-        titre: formData.titre,
-        description: formData.description,
-        date: new Date(formData.date),
-        time: formData.time,
-        location: formData.location,
-        maxParticipants: formData.maxParticipants,
+        date: new Date(formData.date).toISOString(),
+        description: formData.description.trim() || undefined,
+        participantId: Number.parseInt(formData.participantId),
       }
 
-      const response = await anniversaireApi.update(token, editingEvent.id, eventData)
+      console.log("Données de mise à jour:", eventData)
 
-      if (response.success && response.data) {
-        setEvents((prev) => prev.map((event) => event.id === editingEvent.id ? response.data as Anniversaire : event))
-        setShowCreateModal(false)
-        resetForm()
-        toast({
-          title: "Événement modifié",
-          description: "L'événement a été mis à jour avec succès",
-        })
-      } else {
-        toast({
-          title: "Erreur",
-          description: response.error || "Impossible de modifier l'événement",
-          variant: "destructive",
-        })
-      }
+      const updatedEvent = await updateAnniversaire(editingEvent.id.toString(), eventData)
+
+      setEvents((prev) => prev.map((event) => (event.id === editingEvent.id ? updatedEvent : event)))
+      setShowCreateModal(false)
+      resetForm()
+
+      toast({
+        title: "Événement modifié",
+        description: "L'événement a été mis à jour avec succès",
+      })
     } catch (error) {
+      console.error("Erreur lors de la mise à jour:", error)
       toast({
         title: "Erreur",
-        description: "Une erreur est survenue",
+        description: error instanceof Error ? error.message : "Impossible de modifier l'événement",
         variant: "destructive",
       })
     } finally {
@@ -200,44 +214,33 @@ export default function AnniversairesPage() {
   }
 
   const handleDeleteEvent = async (id: number) => {
-    if (!token) return
+    if (!confirm("Êtes-vous sûr de vouloir supprimer cet événement ?")) {
+      return
+    }
 
     try {
-      const response = await anniversaireApi.delete(token, id)
+      console.log("Suppression de l'événement:", id)
 
-      if (response.success) {
-        setEvents((prev) => prev.filter((event) => event.id !== id))
-        toast({
-          title: "Événement supprimé",
-          description: "L'événement a été supprimé avec succès",
-        })
-      } else {
-        toast({
-          title: "Erreur",
-          description: response.error || "Impossible de supprimer l'événement",
-          variant: "destructive",
-        })
-      }
+      await deleteAnniversaire(id.toString())
+
+      setEvents((prev) => prev.filter((event) => event.id !== id))
+      toast({
+        title: "Événement supprimé",
+        description: "L'événement a été supprimé avec succès",
+      })
     } catch (error) {
+      console.error("Erreur lors de la suppression:", error)
       toast({
         title: "Erreur",
-        description: "Une erreur est survenue",
+        description: error instanceof Error ? error.message : "Impossible de supprimer l'événement",
         variant: "destructive",
       })
     }
   }
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "active":
-        return <Badge className="bg-green-100 text-green-800">Actif</Badge>
-      case "draft":
-        return <Badge className="bg-yellow-100 text-yellow-800">Brouillon</Badge>
-      case "completed":
-        return <Badge className="bg-gray-100 text-gray-800">Terminé</Badge>
-      default:
-        return <Badge variant="secondary">Inconnu</Badge>
-    }
+  const getParticipantName = (participantId: number) => {
+    const participant = participants.find((p) => p.id === participantId)
+    return participant ? `${participant.prenom} ${participant.nom}` : "Participant inconnu"
   }
 
   if (loading) {
@@ -286,15 +289,17 @@ export default function AnniversairesPage() {
                   </DialogHeader>
                   <div className="space-y-4">
                     <div>
-                      <Label htmlFor="titre">Titre de l'événement</Label>
+                      <Label htmlFor="date">Date de l'événement *</Label>
                       <Input
-                        id="titre"
-                        placeholder="Ex: Anniversaire de Marie - 30 ans"
-                        value={formData.titre}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, titre: e.target.value }))}
+                        id="date"
+                        type="date"
+                        value={formData.date}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, date: e.target.value }))}
                         disabled={actionLoading}
+                        required
                       />
                     </div>
+
                     <div>
                       <Label htmlFor="description">Description</Label>
                       <Textarea
@@ -303,54 +308,41 @@ export default function AnniversairesPage() {
                         value={formData.description}
                         onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
                         disabled={actionLoading}
+                        rows={3}
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="date">Date</Label>
-                        <Input
-                          id="date"
-                          type="date"
-                          value={formData.date}
-                          onChange={(e) => setFormData((prev) => ({ ...prev, date: e.target.value }))}
-                          disabled={actionLoading}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="time">Heure</Label>
-                        <Input
-                          id="time"
-                          type="time"
-                          value={formData.time}
-                          onChange={(e) => setFormData((prev) => ({ ...prev, time: e.target.value }))}
-                          disabled={actionLoading}
-                        />
-                      </div>
-                    </div>
+
                     <div>
-                      <Label htmlFor="location">Lieu</Label>
-                      <Input
-                        id="location"
-                        placeholder="Ex: Salle des Fêtes, Centre-ville"
-                        value={formData.location}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))}
-                        disabled={actionLoading}
-                      />
+                      <Label htmlFor="participantId">Participant *</Label>
+                      <Select
+                        value={formData.participantId}
+                        onValueChange={(value) => setFormData((prev) => ({ ...prev, participantId: value }))}
+                        disabled={actionLoading || participantsLoading}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner un participant" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {participantsLoading ? (
+                            <SelectItem value="" disabled>
+                              Chargement...
+                            </SelectItem>
+                          ) : participants.length === 0 ? (
+                            <SelectItem value="" disabled>
+                              Aucun participant disponible
+                            </SelectItem>
+                          ) : (
+                            participants.map((participant) => (
+                              <SelectItem key={participant.id} value={participant.id.toString()}>
+                                {participant.prenom} {participant.nom} - {participant.email}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <div>
-                      <Label htmlFor="maxParticipants">Nombre maximum de participants</Label>
-                      <Input
-                        id="maxParticipants"
-                        type="number"
-                        min="1"
-                        value={formData.maxParticipants}
-                        onChange={(e) =>
-                          setFormData((prev) => ({ ...prev, maxParticipants: Number.parseInt(e.target.value) }))
-                        }
-                        disabled={actionLoading}
-                      />
-                    </div>
-                    <div className="flex space-x-3">
+
+                    <div className="flex space-x-3 pt-4">
                       <Button
                         variant="outline"
                         onClick={() => {
@@ -405,60 +397,36 @@ export default function AnniversairesPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Événement</TableHead>
-                      <TableHead>Date & Heure</TableHead>
-                      <TableHead>Lieu</TableHead>
-                      <TableHead>Participants</TableHead>
-                      <TableHead>Statut</TableHead>
+                      <TableHead>ID</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Participant</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {events.map((event) => (
                       <TableRow key={event.id}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{event.titre}</div>
-                            <div className="text-sm text-gray-600">{event.description}</div>
-                          </div>
-                        </TableCell>
+                        <TableCell className="font-medium">#{event.id}</TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2">
                             <Calendar className="w-4 h-4 text-gray-400" />
-                            <div>
-                              <div className="font-medium">{new Date(event.date).toLocaleDateString()}</div>
-                              {event.time && (
-                                <div className="text-sm text-gray-600 flex items-center">
-                                  <Clock className="w-3 h-3 mr-1" />
-                                  {event.time}
-                                </div>
-                              )}
-                            </div>
+                            <span>{new Date(event.date).toLocaleDateString()}</span>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <MapPin className="w-4 h-4 text-gray-400" />
-                            <span className="text-sm">{event.location}</span>
-                          </div>
+                          {event.description ? (
+                            <div className="max-w-xs truncate">{event.description}</div>
+                          ) : (
+                            <span className="text-gray-400 text-sm">Aucune description</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2">
                             <Users className="w-4 h-4 text-gray-400" />
-                            <span className="font-medium">
-                              {event.currentParticipants}/{event.maxParticipants}
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-                            <div
-                              className="bg-gradient-to-r from-purple-600 to-pink-600 h-2 rounded-full"
-                              style={{
-                                width: `${(event.currentParticipants / event.maxParticipants) * 100}%`,
-                              }}
-                            ></div>
+                            <span>{getParticipantName(event.participantId)}</span>
                           </div>
                         </TableCell>
-                        <TableCell>{getStatusBadge(event.status)}</TableCell>
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>

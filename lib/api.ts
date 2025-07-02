@@ -1,338 +1,531 @@
-import type { Admin, Participant, Anniversaire, ApiResponse, LoginCredentials, RegisterData } from "@/lib/types"
+import type { Participant, Anniversaire } from "./types"
 
-const API_BASE_URL = "https://anniversaire-9n5a.onrender.com"
+// URL de l'API mise à jour
+const API_URL = "https://idea-r1ff.onrender.com"
 
-// Fonction utilitaire pour les requêtes API
-async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
-  try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      headers: {
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
-      ...options,
-    })
-
-    const data = await response.json()
-
-    if (!response.ok) {
-      return {
-        success: false,
-        error: data.message || "Une erreur est survenue",
-      }
-    }
-
-    return {
-      success: true,
-      data,
-    }
-  } catch (error) {
-    return {
-      success: false,
-      error: "Erreur de connexion au serveur",
-    }
+// Fonction utilitaire pour récupérer le token d'authentification
+function getAuthToken(type: "admin" | "participant" = "admin"): string | null {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem(`${type}Token`)
   }
-}
-
-// Fonction utilitaire pour les requêtes authentifiées
-async function authenticatedRequest<T>(
-  endpoint: string,
-  token: string,
-  options: RequestInit = {},
-): Promise<ApiResponse<T>> {
-  return apiRequest<T>(endpoint, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...options.headers,
-    },
-  })
-}
-
-// ==================== AUTHENTIFICATION ====================
-
-export const authApi = {
-  // Inscription administrateur
-  adminRegister: async (userData: RegisterData): Promise<ApiResponse<{ message: string; token: string }>> => {
-    return apiRequest("/auths/admin/register", {
-      method: "POST",
-      body: JSON.stringify(userData),
-    })
-  },
-
-  // Connexion administrateur
-  adminLogin: async (credentials: LoginCredentials): Promise<ApiResponse<{ token: string }>> => {
-    return apiRequest("/auths/admin/login", {
-      method: "POST",
-      body: JSON.stringify(credentials),
-    })
-  },
-
-  // Connexion super administrateur
-  userLogin: async (credentials: LoginCredentials): Promise<ApiResponse<{ token: string }>> => {
-    return apiRequest("/auths/user/login", {
-      method: "POST",
-      body: JSON.stringify(credentials),
-    })
-  },
-
-  // Inscription participant
-  participantRegister: async (userData: RegisterData): Promise<ApiResponse<{ message: string }>> => {
-    return apiRequest("/auths/participants/register", {
-      method: "POST",
-      body: JSON.stringify(userData),
-    })
-  },
-
-  // Connexion participant
-  participantLogin: async (credentials: LoginCredentials): Promise<ApiResponse<{ token: string }>> => {
-    return apiRequest("/auths/participants/login", {
-      method: "POST",
-      body: JSON.stringify(credentials),
-    })
-  },
-
-  // Confirmer l'email d'un participant
-  confirmEmail: async (token: string): Promise<ApiResponse<{ message: string }>> => {
-    return apiRequest(`/auths/participants/confirm-email?token=${token}`, {
-      method: "GET",
-    })
-  },
-}
-
-// ==================== GESTION DES ADMINS ====================
-
-export const adminApi = {
-  // Récupérer tous les administrateurs
-  getAll: (token: string): Promise<ApiResponse<Admin[]>> => {
-    return authenticatedRequest<Admin[]>("/admin", token, { method: "GET" })
-  },
-
-  // Créer un nouvel administrateur
-  create: (token: string, adminData: Omit<Admin, "id" | "createdAt" | "updatedAt">): Promise<ApiResponse<Admin>> => {
-    return authenticatedRequest<Admin>("/admin", token, {
-      method: "POST",
-      body: JSON.stringify(adminData),
-    })
-  },
-
-  // Mettre à jour un administrateur
-  update: (token: string, id: number, adminData: Partial<Admin>): Promise<ApiResponse<Admin>> => {
-    return authenticatedRequest<Admin>(`/admin/${id}`, token, {
-      method: "PUT",
-      body: JSON.stringify(adminData),
-    })
-  },
-
-  // Supprimer un administrateur
-  delete: (token: string, id: number): Promise<ApiResponse<{ message: string }>> => {
-    return authenticatedRequest<{ message: string }>(`/admin/${id}`, token, {
-      method: "DELETE",
-    })
-  },
+  return null
 }
 
 // ==================== GESTION DES PARTICIPANTS ====================
 
-export const participantApi = {
-  // Récupérer tous les participants
-  getAll: (token: string): Promise<ApiResponse<Participant[]>> => {
-    return authenticatedRequest<Participant[]>("/participants", token, { method: "GET" })
-  },
+// Récupérer tous les participants
+export async function fetchParticipants(): Promise<Participant[]> {
+  const token = getAuthToken("admin")
 
-  // Récupérer un participant par ID
-  getById: (token: string, id: number): Promise<ApiResponse<Participant>> => {
-    return authenticatedRequest<Participant>(`/participants/${id}`, token, { method: "GET" })
-  },
+  if (!token) {
+    throw new Error("Vous n'êtes pas authentifié")
+  }
 
-  // Créer un nouveau participant
-  create: (
-    token: string,
-    participantData: Omit<Participant, "id" | "createdAt" | "updatedAt" | "code_unique">,
-  ): Promise<ApiResponse<Participant>> => {
-    return authenticatedRequest<Participant>("/participants", token, {
+  try {
+    const response = await fetch(`${API_URL}/participants`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || "Erreur lors de la récupération des participants")
+    }
+
+    const data = await response.json()
+    return data
+  } catch (error: unknown) {
+    console.error("Erreur lors de la récupération des participants:", error)
+    throw error
+  }
+}
+
+// Récupérer un participant par ID
+export async function fetchParticipantById(id: string): Promise<Participant> {
+  const token = getAuthToken("admin")
+
+  if (!token) {
+    throw new Error("Vous n'êtes pas authentifié")
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/participants/${id}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || "Erreur lors de la récupération du participant")
+    }
+
+    const data = await response.json()
+    return data
+  } catch (error: unknown) {
+    console.error("Erreur lors de la récupération du participant:", error)
+    throw error
+  }
+}
+
+// Créer un nouveau participant
+export async function createParticipant(participantData: {
+  nom: string
+  prenom: string
+  email: string
+  guests?: number
+}): Promise<Participant> {
+  const token = getAuthToken("admin")
+
+  if (!token) {
+    throw new Error("Vous n'êtes pas authentifié")
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/participants`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify(participantData),
     })
-  },
 
-  // Mettre à jour un participant
-  update: (token: string, id: number, participantData: Partial<Participant>): Promise<ApiResponse<Participant>> => {
-    return authenticatedRequest<Participant>(`/participants/${id}`, token, {
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || "Erreur lors de la création du participant")
+    }
+
+    const data = await response.json()
+    return data
+  } catch (error: unknown) {
+    console.error("Erreur lors de la création du participant:", error)
+    throw error
+  }
+}
+
+// Mettre à jour un participant
+export async function updateParticipant(
+  participantId: string,
+  updateData: {
+    nom?: string
+    prenom?: string
+    email?: string
+    est_confirme?: boolean
+    guests?: number
+  },
+): Promise<Participant> {
+  const token = getAuthToken("admin")
+
+  if (!token) {
+    throw new Error("Vous n'êtes pas authentifié")
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/participants/${participantId}`, {
       method: "PUT",
-      body: JSON.stringify(participantData),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(updateData),
     })
-  },
 
-  // Supprimer un participant
-  delete: (token: string, id: number): Promise<ApiResponse<{ message: string }>> => {
-    return authenticatedRequest<{ message: string }>(`/participants/${id}`, token, {
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || "Erreur lors de la modification du participant")
+    }
+
+    const data = await response.json()
+    return data
+  } catch (error: unknown) {
+    console.error("Erreur lors de la modification du participant:", error)
+    throw error
+  }
+}
+
+// Supprimer un participant
+export async function deleteParticipant(id: string): Promise<void> {
+  const token = getAuthToken("admin")
+
+  if (!token) {
+    throw new Error("Vous n'êtes pas authentifié")
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/participants/${id}`, {
       method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
     })
-  },
 
-  // Régénérer le code unique d'un participant
-  regenerateCode: (token: string, id: number): Promise<ApiResponse<{ message: string }>> => {
-    return authenticatedRequest<{ message: string }>(`/participants/${id}/regenerate-code`, token, {
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || "Erreur lors de la suppression du participant")
+    }
+  } catch (error: unknown) {
+    console.error("Erreur lors de la suppression du participant:", error)
+    throw error
+  }
+}
+
+// Régénérer le code unique d'un participant
+export async function regenerateParticipantCode(id: string): Promise<{ message: string }> {
+  const token = getAuthToken("admin")
+
+  if (!token) {
+    throw new Error("Vous n'êtes pas authentifié")
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/participants/${id}/regenerate-code`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
     })
-  },
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || "Erreur lors de la régénération du code")
+    }
+
+    const data = await response.json()
+    return data
+  } catch (error: unknown) {
+    console.error("Erreur lors de la régénération du code:", error)
+    throw error
+  }
 }
 
 // ==================== GESTION DES ANNIVERSAIRES ====================
 
-export const anniversaireApi = {
-  // Récupérer tous les anniversaires
-  getAll: (token: string): Promise<ApiResponse<Anniversaire[]>> => {
-    return authenticatedRequest<Anniversaire[]>("/anniversaires", token, { method: "GET" })
-  },
+// Récupérer tous les anniversaires
+export async function fetchAnniversaires(): Promise<Anniversaire[]> {
+  const token = getAuthToken("admin")
 
-  // Récupérer un anniversaire par ID
-  getById: (token: string, id: number): Promise<ApiResponse<Anniversaire>> => {
-    return authenticatedRequest<Anniversaire>(`/anniversaires/${id}`, token, { method: "GET" })
-  },
+  if (!token) {
+    throw new Error("Vous n'êtes pas authentifié")
+  }
 
-  // Créer un nouvel anniversaire
-  create: (
-    token: string,
-    anniversaireData: Omit<Anniversaire, "id" | "createdAt" | "updatedAt" | "currentParticipants">,
-  ): Promise<ApiResponse<Anniversaire>> => {
-    return authenticatedRequest<Anniversaire>("/anniversaires", token, {
-      method: "POST",
-      body: JSON.stringify(anniversaireData),
+  try {
+    const response = await fetch(`${API_URL}/anniversaires`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
     })
-  },
 
-  // Mettre à jour un anniversaire
-  update: (token: string, id: number, anniversaireData: Partial<Anniversaire>): Promise<ApiResponse<Anniversaire>> => {
-    return authenticatedRequest<Anniversaire>(`/anniversaires/${id}`, token, {
-      method: "PUT",
-      body: JSON.stringify(anniversaireData),
-    })
-  },
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || "Erreur lors de la récupération des anniversaires")
+    }
 
-  // Supprimer un anniversaire
-  delete: (token: string, id: number): Promise<ApiResponse<{ message: string }>> => {
-    return authenticatedRequest<{ message: string }>(`/anniversaires/${id}`, token, {
-      method: "DELETE",
-    })
-  },
-
-  // Ajouter un participant à un anniversaire
-  addParticipant: (
-    token: string,
-    anniversaireId: number,
-    participantId: number,
-  ): Promise<ApiResponse<Anniversaire>> => {
-    return authenticatedRequest<Anniversaire>(`/anniversaires/${anniversaireId}/participants`, token, {
-      method: "POST",
-      body: JSON.stringify({ participantId }),
-    })
-  },
-
-  // Retirer un participant d'un anniversaire
-  removeParticipant: (
-    token: string,
-    anniversaireId: number,
-    participantId: number,
-  ): Promise<ApiResponse<Anniversaire>> => {
-    return authenticatedRequest<Anniversaire>(`/anniversaires/${anniversaireId}/participants/${participantId}`, token, {
-      method: "DELETE",
-    })
-  },
+    const data = await response.json()
+    return data
+  } catch (error: unknown) {
+    console.error("Erreur lors de la récupération des anniversaires:", error)
+    throw error
+  }
 }
 
-// ==================== GESTION DU TOKEN CÔTÉ CLIENT ====================
+// Récupérer un anniversaire par ID
+export async function fetchAnniversaireById(id: string): Promise<Anniversaire> {
+  const token = getAuthToken("admin")
 
+  if (!token) {
+    throw new Error("Vous n'êtes pas authentifié")
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/anniversaires/${id}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || "Erreur lors de la récupération de l'anniversaire")
+    }
+
+    const data = await response.json()
+    return data
+  } catch (error: unknown) {
+    console.error("Erreur lors de la récupération de l'anniversaire:", error)
+    throw error
+  }
+}
+
+// Créer un nouvel anniversaire
+export async function createAnniversaire(anniversaireData: {
+  date: string
+  description?: string
+  participantId: number
+  adminId: number
+}): Promise<Anniversaire> {
+  const token = getAuthToken("admin")
+
+  if (!token) {
+    throw new Error("Vous n'êtes pas authentifié")
+  }
+
+  try {
+    console.log("Envoi des données à l'API:", anniversaireData)
+
+    const response = await fetch(`${API_URL}/anniversaires`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(anniversaireData),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      console.error("Erreur API:", errorData)
+      throw new Error(errorData.message || "Erreur lors de la création de l'anniversaire")
+    }
+
+    const data = await response.json()
+    console.log("Réponse API:", data)
+    return data
+  } catch (error: unknown) {
+    console.error("Erreur lors de la création de l'anniversaire:", error)
+    throw error
+  }
+}
+
+// Modifier un anniversaire
+export async function updateAnniversaire(
+  anniversaireId: string,
+  anniversaireData: {
+    date?: string
+    description?: string
+    participantId?: number
+  },
+): Promise<Anniversaire> {
+  const token = getAuthToken("admin")
+
+  if (!token) {
+    throw new Error("Vous n'êtes pas authentifié")
+  }
+
+  try {
+    console.log("Modification anniversaire:", anniversaireId, anniversaireData)
+
+    const response = await fetch(`${API_URL}/anniversaires/${anniversaireId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(anniversaireData),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      console.error("Erreur modification:", errorData)
+      throw new Error(errorData.message || "Erreur lors de la modification de l'anniversaire")
+    }
+
+    const data = await response.json()
+    return data
+  } catch (error: unknown) {
+    console.error("Erreur lors de la modification de l'anniversaire:", error)
+    throw error
+  }
+}
+
+// Supprimer un anniversaire
+export async function deleteAnniversaire(id: string): Promise<void> {
+  const token = getAuthToken("admin")
+
+  if (!token) {
+    throw new Error("Vous n'êtes pas authentifié")
+  }
+
+  try {
+    console.log("Suppression anniversaire:", id)
+
+    const response = await fetch(`${API_URL}/anniversaires/${id}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      console.error("Erreur suppression:", errorData)
+      throw new Error(errorData.message || "Erreur lors de la suppression de l'anniversaire")
+    }
+  } catch (error: unknown) {
+    console.error("Erreur lors de la suppression de l'anniversaire:", error)
+    throw error
+  }
+}
+
+// ==================== AUTHENTIFICATION ====================
+
+// Inscription participant
+export async function registerParticipant(userData: {
+  nom: string
+  prenom: string
+  email: string
+  password: string
+  guests?: number
+}): Promise<{ message: string }> {
+  try {
+    const response = await fetch(`${API_URL}/auths/participants/register`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(userData),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || "Erreur lors de l'inscription")
+    }
+
+    const data = await response.json()
+    return data
+  } catch (error: unknown) {
+    console.error("Erreur lors de l'inscription du participant:", error)
+    throw error
+  }
+}
+
+// Connexion admin
+export async function loginAdmin(credentials: {
+  email: string
+  password: string
+}): Promise<{ token: string }> {
+  try {
+    const response = await fetch(`${API_URL}/auths/admin/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(credentials),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || "Erreur lors de la connexion")
+    }
+
+    const data = await response.json()
+    return data
+  } catch (error: unknown) {
+    console.error("Erreur lors de la connexion admin:", error)
+    throw error
+  }
+}
+
+// Inscription admin
+export async function registerAdmin(userData: {
+  nom: string
+  prenom: string
+  email: string
+  password: string
+}): Promise<{ message: string; token: string }> {
+  try {
+    const response = await fetch(`${API_URL}/auths/admin/register`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(userData),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || "Erreur lors de l'inscription")
+    }
+
+    const data = await response.json()
+    return data
+  } catch (error: unknown) {
+    console.error("Erreur lors de l'inscription admin:", error)
+    throw error
+  }
+}
+
+// ==================== FONCTIONS UTILITAIRES ====================
+
+// Export des données en CSV
+export async function exportParticipantsCSV(): Promise<void> {
+  try {
+    const participants = await fetchParticipants()
+
+    const csvContent = [
+      ["Prénom", "Nom", "Email", "Statut", "Accompagnants", "Date d'inscription"],
+      ...participants.map((p) => [
+        p.prenom,
+        p.nom,
+        p.email,
+        p.est_confirme ? "Confirmé" : "En attente",
+        p.guests?.toString() || "0",
+        new Date(p.createdAt).toLocaleDateString(),
+      ]),
+    ]
+      .map((row) => row.join(","))
+      .join("\n")
+
+    const blob = new Blob([csvContent], { type: "text/csv" })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "participants.csv"
+    a.click()
+    window.URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error("Erreur lors de l'export CSV:", error)
+    throw error
+  }
+}
+
+// Gestion du token côté client
 export const tokenManager = {
-  // Sauvegarder le token
-  setToken: (token: string, type: "admin" | "participant" = "participant") => {
+  setToken: (token: string, type: "admin" | "participant" = "admin") => {
     if (typeof window !== "undefined") {
       localStorage.setItem(`${type}Token`, token)
     }
   },
 
-  // Récupérer le token
-  getToken: (type: "admin" | "participant" = "participant"): string | null => {
+  getToken: (type: "admin" | "participant" = "admin"): string | null => {
     if (typeof window !== "undefined") {
       return localStorage.getItem(`${type}Token`)
     }
     return null
   },
 
-  // Supprimer le token
-  removeToken: (type: "admin" | "participant" = "participant") => {
+  removeToken: (type: "admin" | "participant" = "admin") => {
     if (typeof window !== "undefined") {
       localStorage.removeItem(`${type}Token`)
     }
   },
 
-  // Déconnexion
-  logout: (type: "admin" | "participant" = "participant") => {
+  logout: (type: "admin" | "participant" = "admin") => {
     tokenManager.removeToken(type)
     if (typeof window !== "undefined") {
       window.location.href = type === "admin" ? "/admin/login" : "/login"
     }
   },
-}
-
-// ==================== FONCTIONS UTILITAIRES ====================
-
-// Export des données en CSV
-export const exportData = {
-  exportParticipants: async (token: string): Promise<void> => {
-    const response = await participantApi.getAll(token)
-    if (response.success && response.data) {
-      const csvContent = [
-        ["Prénom", "Nom", "Email", "Statut", "Accompagnants", "Date d'inscription"],
-        ...response.data.map((p) => [
-          p.prenom,
-          p.nom,
-          p.email,
-          p.est_confirme ? "Confirmé" : "En attente",
-          p.guests?.toString() || "0",
-          new Date(p.createdAt).toLocaleDateString(),
-        ]),
-      ]
-        .map((row) => row.join(","))
-        .join("\n")
-
-      const blob = new Blob([csvContent], { type: "text/csv" })
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = "participants.csv"
-      a.click()
-      window.URL.revokeObjectURL(url)
-    }
-  },
-}
-
-// Hook personnalisé pour l'authentification
-export const useAuth = (type: "admin" | "participant" = "participant") => {
-  const token = tokenManager.getToken(type)
-  const isAuthenticated = !!token
-
-  const login = async (credentials: LoginCredentials) => {
-    const response =
-      type === "admin" ? await authApi.adminLogin(credentials) : await authApi.participantLogin(credentials)
-
-    if (response.success && response.data?.token) {
-      tokenManager.setToken(response.data.token, type)
-      return response
-    }
-    return response
-  }
-
-  const logout = () => {
-    tokenManager.logout(type)
-  }
-
-  return {
-    token,
-    isAuthenticated,
-    login,
-    logout,
-    setToken: (newToken: string) => tokenManager.setToken(newToken, type),
-  }
 }

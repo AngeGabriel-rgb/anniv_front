@@ -23,14 +23,13 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
-import { useAuth } from "@/lib/auth"
-import { participantApi, exportData } from "@/lib/api"
+import { tokenManager } from "@/lib/api"
+import { fetchParticipants, updateParticipant, regenerateParticipantCode, exportParticipantsCSV } from "@/lib/api"
 import type { Participant } from "@/lib/types"
 
 export default function ParticipantsPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const { isAuthenticated, token } = useAuth("admin")
   const [participants, setParticipants] = useState<Participant[]>([])
   const [filteredParticipants, setFilteredParticipants] = useState<Participant[]>([])
   const [searchTerm, setSearchTerm] = useState("")
@@ -39,13 +38,15 @@ export default function ParticipantsPage() {
   const [actionLoading, setActionLoading] = useState<number | null>(null)
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    const token = tokenManager.getToken("admin")
+
+    if (!token) {
       router.push("/admin/login")
       return
     }
 
     loadParticipants()
-  }, [isAuthenticated, router, token])
+  }, [router])
 
   useEffect(() => {
     let filtered = participants
@@ -71,25 +72,15 @@ export default function ParticipantsPage() {
   }, [participants, searchTerm, statusFilter])
 
   const loadParticipants = async () => {
-    if (!token) return
-
     try {
       setLoading(true)
-      const response = await participantApi.getAll(token)
-
-      if (response.success && response.data) {
-        setParticipants(response.data)
-      } else {
-        toast({
-          title: "Erreur",
-          description: response.error || "Impossible de charger les participants",
-          variant: "destructive",
-        })
-      }
+      const data = await fetchParticipants()
+      setParticipants(data)
     } catch (error) {
+      console.error("Erreur lors du chargement des participants:", error)
       toast({
         title: "Erreur",
-        description: "Une erreur est survenue lors du chargement",
+        description: error instanceof Error ? error.message : "Impossible de charger les participants",
         variant: "destructive",
       })
     } finally {
@@ -98,30 +89,22 @@ export default function ParticipantsPage() {
   }
 
   const updateParticipantStatus = async (id: number, newStatus: boolean) => {
-    if (!token) return
-
     try {
       setActionLoading(id)
-      const response = await participantApi.update(token, id, { est_confirme: newStatus })
 
-      if (response.success) {
-        setParticipants((prev) => prev.map((p) => (p.id === id ? { ...p, est_confirme: newStatus } : p)))
+      await updateParticipant(id.toString(), { est_confirme: newStatus })
 
-        toast({
-          title: "Statut mis à jour",
-          description: `Inscription ${newStatus ? "confirmée" : "mise en attente"}`,
-        })
-      } else {
-        toast({
-          title: "Erreur",
-          description: response.error || "Impossible de mettre à jour le statut",
-          variant: "destructive",
-        })
-      }
+      setParticipants((prev) => prev.map((p) => (p.id === id ? { ...p, est_confirme: newStatus } : p)))
+
+      toast({
+        title: "Statut mis à jour",
+        description: `Inscription ${newStatus ? "confirmée" : "mise en attente"}`,
+      })
     } catch (error) {
+      console.error("Erreur lors de la mise à jour:", error)
       toast({
         title: "Erreur",
-        description: "Une erreur est survenue",
+        description: error instanceof Error ? error.message : "Impossible de mettre à jour le statut",
         variant: "destructive",
       })
     } finally {
@@ -130,28 +113,20 @@ export default function ParticipantsPage() {
   }
 
   const regenerateCode = async (id: number) => {
-    if (!token) return
-
     try {
       setActionLoading(id)
-      const response = await participantApi.regenerateCode(token, id)
 
-      if (response.success) {
-        toast({
-          title: "Code régénéré",
-          description: "Un nouveau code a été envoyé par email",
-        })
-      } else {
-        toast({
-          title: "Erreur",
-          description: response.error || "Impossible de régénérer le code",
-          variant: "destructive",
-        })
-      }
+      await regenerateParticipantCode(id.toString())
+
+      toast({
+        title: "Code régénéré",
+        description: "Un nouveau code a été envoyé par email",
+      })
     } catch (error) {
+      console.error("Erreur lors de la régénération:", error)
       toast({
         title: "Erreur",
-        description: "Une erreur est survenue",
+        description: error instanceof Error ? error.message : "Impossible de régénérer le code",
         variant: "destructive",
       })
     } finally {
@@ -160,18 +135,17 @@ export default function ParticipantsPage() {
   }
 
   const handleExport = async () => {
-    if (!token) return
-
     try {
-      await exportData.exportParticipants(token)
+      await exportParticipantsCSV()
       toast({
         title: "Export réussi",
         description: "Le fichier CSV a été téléchargé",
       })
     } catch (error) {
+      console.error("Erreur lors de l'export:", error)
       toast({
         title: "Erreur d'export",
-        description: "Impossible d'exporter les données",
+        description: error instanceof Error ? error.message : "Impossible d'exporter les données",
         variant: "destructive",
       })
     }

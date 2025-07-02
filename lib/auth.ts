@@ -1,8 +1,7 @@
-import jwt from "jsonwebtoken"
 import type { LoginCredentials, RegisterData, AuthResponse, ApiResponse } from "./types"
 
-const API_BASE_URL = "https://anniversaire-9n5a.onrender.com"
-const JWT_SECRET = process.env.JWT_SECRET || "anniversaire"
+// Remplacer l'ancienne URL de l'API par la nouvelle
+const API_BASE_URL = "https://idea-r1ff.onrender.com"
 
 // Fonction utilitaire pour les requêtes API
 async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
@@ -36,6 +35,39 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
   }
 }
 
+// Fonction pour décoder un JWT côté client (sans vérification de signature)
+function decodeJWT(token: string) {
+  try {
+    const parts = token.split(".")
+    if (parts.length !== 3) {
+      return null
+    }
+
+    const payload = parts[1]
+    const decoded = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")))
+    return decoded
+  } catch (error) {
+    console.error("Erreur lors du décodage du token:", error)
+    return null
+  }
+}
+
+// Fonction pour vérifier si un token est expiré
+function isTokenExpired(token: string): boolean {
+  try {
+    const decoded = decodeJWT(token)
+    if (!decoded || !decoded.exp) {
+      return true
+    }
+
+    const currentTime = Math.floor(Date.now() / 1000)
+    return decoded.exp < currentTime
+  } catch (error) {
+    console.error("Erreur lors de la vérification d'expiration:", error)
+    return true
+  }
+}
+
 // Authentification Admin
 export const adminAuth = {
   // Inscription admin
@@ -54,23 +86,36 @@ export const adminAuth = {
     })
   },
 
-  // Vérifier le token admin
+  // Vérifier le token admin (côté client, sans vérification de signature)
   verifyToken: (token: string): boolean => {
     try {
-      const decoded = jwt.verify(token, JWT_SECRET) as any
-      return decoded.isAdmin === true
-    } catch {
+      if (isTokenExpired(token)) {
+        console.log("Token expiré")
+        return false
+      }
+
+      const decoded = decodeJWT(token)
+      console.log("Token décodé:", decoded)
+
+      if (!decoded) {
+        console.log("Impossible de décoder le token")
+        return false
+      }
+
+      // Vérifier que c'est bien un token admin
+      const isAdmin = decoded.isAdmin === true || decoded.adminId
+      console.log("Est admin:", isAdmin)
+
+      return isAdmin
+    } catch (error) {
+      console.error("Erreur lors de la vérification du token:", error)
       return false
     }
   },
 
   // Décoder le token admin
   decodeToken: (token: string) => {
-    try {
-      return jwt.verify(token, JWT_SECRET)
-    } catch {
-      return null
-    }
+    return decodeJWT(token)
   },
 }
 
@@ -95,20 +140,26 @@ export const participantAuth = {
   // Vérifier le token participant
   verifyToken: (token: string): boolean => {
     try {
-      const decoded = jwt.verify(token, JWT_SECRET) as any
+      if (isTokenExpired(token)) {
+        return false
+      }
+
+      const decoded = decodeJWT(token)
+      if (!decoded) {
+        return false
+      }
+
+      // Vérifier que c'est bien un token participant (pas admin)
       return decoded.userId && !decoded.isAdmin
-    } catch {
+    } catch (error) {
+      console.error("Erreur lors de la vérification du token participant:", error)
       return false
     }
   },
 
   // Décoder le token participant
   decodeToken: (token: string) => {
-    try {
-      return jwt.verify(token, JWT_SECRET)
-    } catch {
-      return null
-    }
+    return decodeJWT(token)
   },
 }
 
@@ -125,13 +176,16 @@ export const tokenManager = {
   setToken: (token: string, type: "admin" | "participant" = "participant") => {
     if (typeof window !== "undefined") {
       localStorage.setItem(`${type}Token`, token)
+      console.log(`Token ${type} sauvegardé:`, token.substring(0, 50) + "...")
     }
   },
 
   // Récupérer le token
   getToken: (type: "admin" | "participant" = "participant"): string | null => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem(`${type}Token`)
+      const token = localStorage.getItem(`${type}Token`)
+      console.log(`Token ${type} récupéré:`, token ? token.substring(0, 50) + "..." : "null")
+      return token
     }
     return null
   },
@@ -140,23 +194,34 @@ export const tokenManager = {
   removeToken: (type: "admin" | "participant" = "participant") => {
     if (typeof window !== "undefined") {
       localStorage.removeItem(`${type}Token`)
+      console.log(`Token ${type} supprimé`)
     }
   },
 
   // Vérifier si l'utilisateur est connecté
   isAuthenticated: (type: "admin" | "participant" = "participant"): boolean => {
     const token = tokenManager.getToken(type)
-    if (!token) return false
+    console.log(`Vérification de l'authentification ${type}...`)
 
-    if (type === "admin") {
-      return adminAuth.verifyToken(token)
-    } else {
-      return participantAuth.verifyToken(token)
+    if (!token) {
+      console.log("Aucun token trouvé")
+      return false
     }
+
+    let isValid = false
+    if (type === "admin") {
+      isValid = adminAuth.verifyToken(token)
+    } else {
+      isValid = participantAuth.verifyToken(token)
+    }
+
+    console.log(`Authentifié (${type}):`, isValid)
+    return isValid
   },
 
   // Déconnexion
   logout: (type: "admin" | "participant" = "participant") => {
+    console.log(`Déconnexion ${type}...`)
     tokenManager.removeToken(type)
     if (typeof window !== "undefined") {
       window.location.href = type === "admin" ? "/admin/login" : "/login"

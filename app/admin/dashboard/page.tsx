@@ -7,13 +7,11 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Users, Calendar, Mail, Settings, LogOut, Eye, UserCheck, Clock, Loader2 } from "lucide-react"
 import Link from "next/link"
-import { useAuth } from "@/lib/auth"
-import { participantApi } from "@/lib/api"
+import { tokenManager, fetchParticipants } from "@/lib/api"
 import type { Participant } from "@/lib/types"
 
 export default function AdminDashboard() {
   const router = useRouter()
-  const { isAuthenticated, token, logout } = useAuth("admin")
   const [stats, setStats] = useState({
     totalParticipants: 0,
     confirmedParticipants: 0,
@@ -25,46 +23,44 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    const token = tokenManager.getToken("admin")
+
+    if (!token) {
       router.push("/admin/login")
       return
     }
 
     loadDashboardData()
-  }, [isAuthenticated, router, token])
+  }, [router])
 
   const loadDashboardData = async () => {
-    if (!token) return
-
     try {
       setLoading(true)
+      console.log("Chargement des données du dashboard...")
 
       // Récupérer tous les participants
-      const participantsResponse = await participantApi.getAll(token)
+      const participants = await fetchParticipants()
+      console.log("Participants récupérés:", participants)
 
-      if (participantsResponse.success && participantsResponse.data) {
-        const participants = participantsResponse.data
+      // Calculer les statistiques
+      const totalParticipants = participants.length
+      const confirmedParticipants = participants.filter((p) => p.est_confirme).length
+      const pendingParticipants = participants.filter((p) => !p.est_confirme).length
 
-        // Calculer les statistiques
-        const totalParticipants = participants.length
-        const confirmedParticipants = participants.filter((p) => p.est_confirme).length
-        const pendingParticipants = participants.filter((p) => !p.est_confirme).length
+      setStats({
+        totalParticipants,
+        confirmedParticipants,
+        pendingParticipants,
+        rejectedParticipants: 0,
+        totalEvents: 0,
+      })
 
-        setStats({
-          totalParticipants,
-          confirmedParticipants,
-          pendingParticipants,
-          rejectedParticipants: 0, // À implémenter si vous avez un statut "rejeté"
-          totalEvents: 0, // À récupérer depuis l'API anniversaires
-        })
+      // Prendre les 4 inscriptions les plus récentes
+      const recent = participants
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 4)
 
-        // Prendre les 4 inscriptions les plus récentes
-        const recent = participants
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-          .slice(0, 4)
-
-        setRecentRegistrations(recent)
-      }
+      setRecentRegistrations(recent)
     } catch (error) {
       console.error("Erreur lors du chargement des données:", error)
     } finally {
@@ -73,7 +69,8 @@ export default function AdminDashboard() {
   }
 
   const handleLogout = () => {
-    logout()
+    console.log("Déconnexion...")
+    tokenManager.logout("admin")
   }
 
   const getStatusBadge = (participant: Participant) => {
@@ -222,7 +219,7 @@ export default function AdminDashboard() {
                     </div>
                   </Link>
                 </Button>
-                <Button asChild variant="outline" className="justify-start h-auto p-4 bg-transparent">
+                <Button variant="outline" asChild className="justify-start h-auto p-4 bg-transparent">
                   <Link href="/admin/anniversaires">
                     <Calendar className="w-5 h-5 mr-3" />
                     <div className="text-left">

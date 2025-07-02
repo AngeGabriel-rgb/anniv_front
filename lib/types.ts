@@ -33,11 +33,13 @@ export interface Anniversaire {
   maxParticipants: number
   currentParticipants: number
   status: "active" | "draft" | "completed"
+  participantId: number
   adminId: number
-  participants?: Participant[]
+  // Relations optionnelles pour les jointures
+  participant?: Participant
   admin?: Admin
-  createdAt: Date
-  updatedAt: Date
+  createdAt?: Date
+  updatedAt?: Date
 }
 
 export interface AuthResponse {

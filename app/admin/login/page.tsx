@@ -1,15 +1,16 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Lock, Mail, Shield } from "lucide-react"
+import { Lock, Mail, Shield, Loader2, UserPlus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { tokenManager, loginAdmin } from "@/lib/api"
+import Link from "next/link"
 
 export default function AdminLogin() {
   const router = useRouter()
@@ -20,31 +21,57 @@ export default function AdminLogin() {
     password: "",
   })
 
+  // Vérifier si l'utilisateur est déjà connecté
+  useEffect(() => {
+    const token = tokenManager.getToken("admin")
+    if (token) {
+      router.push("/admin/dashboard")
+    }
+  }, [router])
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!credentials.email || !credentials.password) {
+      toast({
+        title: "Champs requis",
+        description: "Veuillez remplir tous les champs",
+        variant: "destructive",
+      })
+      return
+    }
+
     setLoading(true)
 
-    // Simulation de connexion
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    try {
+      console.log("Tentative de connexion avec:", credentials.email)
 
-    if (credentials.email === "admin@event.com" && credentials.password === "admin123") {
+      const response = await loginAdmin(credentials)
+      console.log("Réponse de l'API:", response)
+
+      // Stocker le token
+      tokenManager.setToken(response.token, "admin")
+      console.log("Token stocké:", response.token)
+
       toast({
         title: "Connexion réussie",
         description: "Redirection vers le tableau de bord...",
       })
 
-      // Stocker l'état de connexion
-      localStorage.setItem("adminAuth", "true")
-      router.push("/admin/dashboard")
-    } else {
+      // Attendre un peu avant la redirection pour s'assurer que le token est stocké
+      setTimeout(() => {
+        router.push("/admin/dashboard")
+      }, 1000)
+    } catch (error) {
+      console.error("Erreur lors de la connexion:", error)
       toast({
         title: "Erreur de connexion",
-        description: "Email ou mot de passe incorrect",
+        description: error instanceof Error ? error.message : "Email ou mot de passe incorrect",
         variant: "destructive",
       })
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   return (
@@ -73,6 +100,7 @@ export default function AdminLogin() {
                   className="pl-10"
                   value={credentials.email}
                   onChange={(e) => setCredentials((prev) => ({ ...prev, email: e.target.value }))}
+                  disabled={loading}
                   required
                 />
               </div>
@@ -89,6 +117,7 @@ export default function AdminLogin() {
                   className="pl-10"
                   value={credentials.password}
                   onChange={(e) => setCredentials((prev) => ({ ...prev, password: e.target.value }))}
+                  disabled={loading}
                   required
                 />
               </div>
@@ -99,14 +128,33 @@ export default function AdminLogin() {
               disabled={loading}
               className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
             >
-              {loading ? "Connexion..." : "Se connecter"}
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Connexion...
+                </>
+              ) : (
+                "Se connecter"
+              )}
             </Button>
           </form>
 
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <p className="text-sm text-gray-600 mb-2">Identifiants de démonstration :</p>
-            <p className="text-xs text-gray-500">Email: admin@event.com</p>
-            <p className="text-xs text-gray-500">Mot de passe: admin123</p>
+          {/* Lien vers l'inscription */}
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600 mb-3">Pas encore de compte administrateur ?</p>
+            <Button variant="outline" asChild className="w-full bg-transparent">
+              <Link href="/admin/register">
+                <UserPlus className="w-4 h-4 mr-2" />
+                Créer un compte administrateur
+              </Link>
+            </Button>
+          </div>
+
+          {/* Lien de retour */}
+          <div className="mt-4 text-center">
+            <Button variant="ghost" asChild>
+              <Link href="/">Retour au site</Link>
+            </Button>
           </div>
         </CardContent>
       </Card>

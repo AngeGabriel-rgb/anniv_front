@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { User, Mail, Lock, Users, Check, AlertCircle, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { participantAuth } from "@/lib/auth"
+import { registerParticipant } from "@/lib/api"
 
 interface RegistrationModalProps {
   open: boolean
@@ -82,38 +82,33 @@ export function RegistrationModal({ open, onOpenChange }: RegistrationModalProps
         guests: Number.parseInt(formData.guests),
       }
 
-      const response = await participantAuth.register(userData)
+      console.log("Inscription participant:", userData)
 
-      if (response.success) {
-        toast({
-          title: "Inscription réussie !",
-          description: response.data?.message || "Vous recevrez un email de confirmation sous peu.",
-        })
+      const response = await registerParticipant(userData)
 
-        // Réinitialiser le formulaire
-        onOpenChange(false)
-        setStep(1)
-        setFormData({
-          firstName: "",
-          lastName: "",
-          email: "",
-          password: "",
-          confirmPassword: "",
-          guests: "0",
-          acceptTerms: false,
-        })
-        setErrors({})
-      } else {
-        toast({
-          title: "Erreur d'inscription",
-          description: response.error || "Une erreur est survenue lors de l'inscription.",
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
       toast({
-        title: "Erreur",
-        description: "Une erreur inattendue est survenue.",
+        title: "Inscription réussie !",
+        description: response.message || "Vous recevrez un email de confirmation sous peu.",
+      })
+
+      // Réinitialiser le formulaire
+      onOpenChange(false)
+      setStep(1)
+      setFormData({
+        firstName: "",
+        lastName: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+        guests: "0",
+        acceptTerms: false,
+      })
+      setErrors({})
+    } catch (error) {
+      console.error("Erreur lors de l'inscription:", error)
+      toast({
+        title: "Erreur d'inscription",
+        description: error instanceof Error ? error.message : "Une erreur est survenue lors de l'inscription.",
         variant: "destructive",
       })
     } finally {
