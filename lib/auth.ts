@@ -1,7 +1,7 @@
 import type { LoginCredentials, RegisterData, AuthResponse, ApiResponse } from "./types"
 
 // Remplacer l'ancienne URL de l'API par la nouvelle
-const API_BASE_URL = "https://idea1-j5f4.onrender.com"
+const API_BASE_URL = "https://idea-fzh5.onrender.com"
 
 // Fonction utilitaire pour les requêtes API
 async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {

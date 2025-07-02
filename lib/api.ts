@@ -1,7 +1,7 @@
 import type { Participant, Anniversaire } from "./types"
 
 // URL de l'API mise à jour
-const API_URL = "https://idea1-j5f4.onrender.com"
+const API_URL = "https://idea-fzh5.onrender.com"
 
 // Fonction utilitaire pour récupérer le token d'authentification
 function getAuthToken(type: "admin" | "participant" = "admin"): string | null {
