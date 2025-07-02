@@ -41,7 +41,7 @@ export function HeroSection() {
         <div className="grid md:grid-cols-3 gap-6 mb-12 animate-slide-up delay-400">
           <div className="flex items-center justify-center space-x-3 bg-white/90 backdrop-blur-sm rounded-lg p-4 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
             <Calendar className="w-6 h-6 text-purple-600" />
-            <span className="font-semibold text-gray-800">15 Décembre 2024</span>
+            <span className="font-semibold text-gray-800">12 Décembre 2025</span>
           </div>
           <div className="flex items-center justify-center space-x-3 bg-white/90 backdrop-blur-sm rounded-lg p-4 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
             <MapPin className="w-6 h-6 text-pink-600" />
